@@ -1,50 +1,214 @@
 # Relay Method
 
-**Open the task. Understand its boundaries. Continue with your preferred assistant. Return reviewable work.**
+**Task-sized work, handed off with its boundaries and returned with its evidence.**
 
-Use the least total effort that satisfies the task’s requirements, and increase effort when evidence shows it is needed.
+Relay is a local, provider-neutral tool for handing a piece of work to an AI assistant, or to another person, and getting back something a reviewer can assess. Each task is a small file-based record: what is wanted, which sources are in scope, how much effort it deserves, what was actually checked, and which version was accepted.
 
-Relay Method combines portable knowledge inspired by [OKF](https://github.com/GoogleCloudPlatform/open-knowledge-format), staged work inspired by [ICM](https://github.com/RinDig/Interpretable-Context-Methodology), and a lightweight task-to-review flow. It works offline with your existing assistant. Jev judgments are optional.
+It works with the assistant you already use. Relay prepares the context and records the result; it does not call a model, run commands, or decide that a claim is true.
 
-**Status: local prototype 0.3.0.** The CLI and loopback browser interface implement task creation, adaptive effort recommendations, selected context export, evidence submission, version-specific local review, freshness checks, and bounded escalation. Organizational authentication, managed model execution, compute enforcement, and cross-run dependency graphs remain future work. Savings and live Jev performance have not been established.
+```text
+Open the task → Understand its boundaries → Continue with your assistant → Return reviewable work
+```
 
-## Install
+> Use the least total effort that satisfies the task's requirements, and increase effort when evidence shows it is needed.
 
-Requires Python 3.11+.
+**Status: local prototype 0.3.0.** Single user, loopback only, no authentication. See [What is and is not established](#what-is-and-is-not-established).
+
+---
+
+## Why this exists
+
+Work that passes between people and assistants tends to lose the same four things:
+
+- **Boundaries.** Which source is authoritative, and what the assistant may rely on.
+- **Currency.** Whether the inputs changed after the work was done.
+- **Evidence.** What was actually checked, as opposed to what was claimed.
+- **Acceptance.** Which version a reviewer approved, and whether it is still that version.
+
+The usual fixes pull in opposite directions. A shared brief is light but silent about all four. A full staged workflow, such as the six-stage protocol Relay inherits from its predecessor, is rigorous but too heavy for a spelling fix. Relay sits between them: one task-sized unit with a frozen input snapshot, a result bound to evidence, and a review bound to an exact version. The amount of process scales with the task.
+
+If prompts, sources, and decisions already live as files, the handoff can be files as well. A task is a folder of Markdown and JSON that any person or tool can open, diff, and commit.
+
+## Design principles
+
+**One task, one record.** Each task holds its brief, route, input snapshot, submissions, and review events in one place. Another person can resume from the record without reconstructing a conversation.
+
+**Proportional effort.** Rules recommend Direct, Standard, Investigative, or Clarify. A one-word fix does not pay for an investigation, and a short but consequential change still gets strict attention.
+
+**Plain files as the interface.** Packets are Markdown for people and frozen JSON for tools. There is no database and no service to run. State is the folder.
+
+**Evidence over assertion.** A submission needs a result file, a separate evidence file, a description of the checks performed, open questions, and a next action. Relay verifies that these exist and which version they are. It does not verify that they are true.
+
+**Progress, freshness, and acceptance stay separate.** A task can be submitted but stale, or fresh but unreviewed. No single "done" badge hides one of these.
+
+**Control is not data.** Project controls define the workflow. Selected sources are labelled data, and instructions inside them carry no authority.
+
+## How it works
+
+A task moves through five operations. Every one writes to disk, so the state is always readable.
+
+```mermaid
+flowchart LR
+    S["start<br/>brief · route · snapshot"] --> C["context<br/>portable packet"]
+    C --> W["work in your<br/>assistant"]
+    W --> U["submit<br/>result + evidence"]
+    U --> R["review<br/>exact version"]
+    U -. input, output or evidence changed .-> N["needs review"]
+    N --> F["refresh<br/>new snapshot"]
+    F --> C
+```
+
+| Step       | Command         | What happens                                                                                                                   |
+| ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Open       | `relay start`   | Validates the brief, selects an effort profile, and snapshots the controls and selected sources with full-file SHA-256 hashes. |
+| Understand | `relay context` | Exports the current packet as Markdown. Refuses to export if inputs changed or a blocker is open.                              |
+| Continue   | your assistant  | You work outside Relay. Save the deliverable and its evidence as separate files.                                               |
+| Return     | `relay submit`  | Binds the result and evidence to the current packet and records the checks, open questions, and next action.                   |
+| Review     | `relay review`  | Records a decision on one specific submission by the assigned reviewer.                                                        |
+
+`relay list` and `relay show` recompute freshness at any time. `relay refresh` and `relay escalate` are covered below.
+
+### What a packet carries
+
+| Part     | Source                                                        | Treatment                                                                     |
+| -------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Controls | `.context/ENTRY.md`, `policy.md`, `project.md`, `config.json` | Instructions for the workflow. Always included.                               |
+| Brief    | Task fields                                                   | Goal, acceptance criteria, owner, reviewer, boundaries, kind, risk, blockers. |
+| Route    | Effort policy                                                 | Selected profile, decision basis, and any escalation.                         |
+| Sources  | `--select path` or `--select path#Exact Heading`              | Data, framed as JSON strings. Knowledge keeps its metadata signals.           |
+
+Selecting a heading narrows what is sent, but the hash covers the whole file, so any byte change to the source is detected. Selected files are limited to 1 MB, common secret paths are refused, and the rendered packet has a character budget. Relay fails before creating the task rather than silently omitting a required source.
+
+A packet hash detects change or corruption. It does not authenticate who wrote it.
+
+### Proportional effort
+
+| Profile           | Selected when                                              | Expected work                              |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------ |
+| **Direct**        | An explicit transformation with low consequences           | Do the work and a relevant check.          |
+| **Standard**      | The default                                                | Plan, work, check, hand off where needed.  |
+| **Investigative** | Diagnosis, design, a conflict signal, or high consequences | Investigate and validate more strongly.    |
+| **Clarify**       | An explicit missing prerequisite                           | Resolve what is missing before continuing. |
+
+Routing uses explicit task kind and risk, blocker flags, and conservative request-text heuristics under policy `relay-effort-v1`. These are recommendations to the person and assistant doing the work. They do not control an external model's compute, grant permission, or waive required review. No classifier finds every risk, so review the selected route and escalate on evidence.
+
+```sh
+relay start heading --goal "Fix the heading spelling" --accept "Spelling corrected" \
+  --kind transform --risk low --select draft.md
+relay escalate heading --note "The change revealed conflicting terminology"
+```
+
+Each task allows one escalation, to Investigative. Further effort means reassessing the scope.
+
+### When inputs change
+
+```sh
+relay show faq                      # freshness is recomputed
+relay refresh faq --note "The designated policy changed; reassess affected answers"
+relay context faq --out faq-context-v2.md
+```
+
+Freshness covers the selected inputs, the controls, and the submitted output and evidence. A change makes any acceptance due for review. `refresh` takes a new snapshot and clears the current submission and acceptance, while the old packets, receipts, and review events remain as history. A refresh records that inputs changed. It does not mean the new facts were validated.
+
+### Review is version-specific
+
+Every submission has a `submission_id` derived from its result and evidence receipts, packet reference, checks, questions, next action, and time. A review names one ID and the assigned reviewer. Editing the output afterwards changes what the current version is, and the earlier acceptance no longer applies to it.
+
+Reviewer names are self-recorded. Relay shows who claims to have reviewed, not who actually did.
+
+## Observability and portability
+
+Everything Relay knows is on disk, so inspection needs no extra tooling:
+
+```text
+.context/
+  ENTRY.md · policy.md · project.md · config.json     Project control and authority
+  knowledge/                                          Portable concepts (Markdown + YAML)
+  runs/                                               Six-stage runs from the original CLI
+  relay/tasks/<id>/
+    state.json                                        Task, route, freshness inputs, review events
+    packets/<sha256>.json                             Frozen input snapshots
+    submissions/<sha256>.json                         Result and evidence receipts
+deliverables/                                         Versioned results written by the browser UI
+```
+
+A project is a folder. Copy it, commit it, or zip it. Writes use a cooperative lock, and JSON files are replaced atomically. Packet creation and state updates are not a single database transaction, so after a crash, inspect the state before clearing a stale lock.
+
+## Where this works
+
+- Sequential tasks that a person reviews: drafts, analyses, specifications, source-backed answers.
+- Work that passes between sessions, assistants, or collaborators and should not depend on one chat history.
+- Teams that already keep their sources as files and want the handoff to match.
+
+## Where this does not work
+
+- **Managed execution.** Relay does not invoke a worker model, run shell commands, or enforce compute limits.
+- **Authenticated, multi-user access.** The interface is loopback-only for a trusted local user. A cloned repository cannot hide confidential folders from whoever holds the clone.
+- **Real-time multi-agent coordination.** File handoffs are too slow for tight agent loops.
+- **Automated branching.** A person decides the next step between tasks.
+- **Cross-task dependency tracking.** Freshness is computed within a task. A graph across runs is future work.
+
+## Relationship to OKF, ICM, and MCP
+
+Relay is an independent implementation. It borrows ideas, not code, and bundles nothing from either project.
+
+| Project                                                             | Contribution to Relay                                                                   | In Relay                                                                       |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [OKF](https://github.com/GoogleCloudPlatform/open-knowledge-format) | Knowledge as Markdown with YAML frontmatter, including provenance and freshness signals | `.context/knowledge/` concepts and their metadata checks                       |
+| [ICM](https://github.com/RinDig/Interpretable-Context-Methodology)  | Stage contracts, scoped context, and every output being an editable file                | The original six-stage `okf-icm` workflow and Relay's explicit input selection |
+| [MCP](https://modelcontextprotocol.io)                              | A different layer: how models reach external tools                                      | Unrelated. A packet can be used inside an assistant that has MCP connections.  |
+
+Relay adds the task-to-review layer: effort routing, evidence-bound submissions, and version-specific acceptance. The OKF-style metadata checks are implemented here. They have not been tested against bundles from the upstream OKF repository. See [ATTRIBUTION.md](ATTRIBUTION.md).
+
+The original `okf-icm` command remains for the detailed six-stage workflow. Relay tasks share its path readers, hashing, section selection, knowledge validation, and lock, and they never complete legacy stages or rewrite an existing stage graph.
+
+## Optional Jev
+
+Relay can ask TypeSafe's [System One](https://docs.typesafe.ai/api/system-one) model for a second opinion on routing. This happens only when you pass `--jev`.
+
+```sh
+relay start assessment --goal "Investigate conflicting product claims" \
+  --accept "Resolve conflicts with evidence" --select sources.md --jev shadow
+```
+
+- `shadow` records the judgment without changing the route.
+- `route` may raise effort. It cannot lower a rule-selected profile, clear a blocker, or skip review.
+- The goal and selected non-control sources are sent to the provider, so select only content you are authorized to share. Control files are excluded.
+- The API key comes from `TYPESAFE_API_KEY` in the environment and is never stored. Requests time out after five seconds, are not retried, and reject redirects. On any failure Relay keeps the rules-only route and records why.
+
+The decision threshold is an initial heuristic, not a calibrated error bound. See [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md).
+
+## Getting started
+
+Requires Python 3.11+. The only runtime dependency is PyYAML, and no model API is needed.
 
 ```sh
 git clone https://github.com/milo-ve/relay-okf-icm.git
 cd relay-okf-icm
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install -e .
 ```
 
-On Windows use `python -m venv .venv` and `.venv\Scripts\Activate.ps1` in PowerShell. Installation uses PyYAML; no model API is required for the default workflow.
-
-## Try the local application
-
-Create a new synthetic project; use a destination that does not exist:
+### Try the synthetic demo
 
 ```sh
-python examples/relay_demo.py ./relay-demo
+python examples/relay_demo.py ./relay-demo     # destination must not exist
 relay --root ./relay-demo serve
 ```
 
-Open **http://127.0.0.1:8765**. Select the sample FAQ task, download its context for your preferred assistant, paste the result and actual evidence, and record a review. You can also open a new task from the home page.
+Open <http://127.0.0.1:8765>. Open the sample FAQ task, download its context for your assistant, paste the result and the checks you actually ran, and record a review.
 
-For a real project:
+### Use it on a real project
 
 ```sh
 relay init ./my-project --name "My project"
 relay --root ./my-project serve
 ```
 
-If the project already has `.context/`, initialization refuses to overwrite it. Use `relay --root ./existing-project serve` to work with a compatible existing workspace. Read and deliberately configure `.context/policy.md` and `.context/project.md` before delegating real work. Relay does not discover business authority automatically.
+`init` refuses to overwrite an existing `.context/`. Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
 
-## Use the CLI
-
-From an initialized project, with the CLI on PATH:
+### Or use the CLI
 
 ```sh
 relay start faq --goal "Draft a source-backed pricing FAQ" \
@@ -54,7 +218,7 @@ relay start faq --goal "Draft a source-backed pricing FAQ" \
 relay context faq --out faq-context.md
 ```
 
-Work in your assistant and save separate deliverable and evidence files. Then:
+Work in your assistant, then save the deliverable and its evidence as separate files:
 
 ```sh
 relay submit faq --output faq.md --evidence observed-checks.md \
@@ -64,80 +228,34 @@ relay submit faq --output faq.md --evidence observed-checks.md \
 relay show faq
 ```
 
-Use the actual `submission_id` from that output:
+Review using the real `submission_id` from that output:
 
 ```sh
 relay review faq --submission ACTUAL_SUBMISSION_ID --decision accept \
   --actor milo --note "Reviewed this version against the designated source"
 ```
 
-The named actor is a local, self-recorded assertion, not authenticated identity. The files and checks must exist; the CLI does not decide that their claims are true.
+Task outputs must be separate from selected inputs and control files. This release handles proposal handoffs. Folding an accepted result into a canonical source is a separate action.
 
-## Proportional effort
+## Security boundaries
 
-| Profile | Rule | Expected work |
-|---|---|---|
-| Direct | Explicit transformation + low consequences | Work and a relevant check. |
-| Standard | Conservative default | Plan, work, check, handoff where needed. |
-| Investigative | Diagnosis, design, conflict signal, or high consequences | Investigation and stronger validation. |
-| Clarify | An explicit missing prerequisite | Resolve what is missing before continuing. |
+The browser interface binds to `127.0.0.1`, checks Host and Origin, requires a per-server CSRF token, escapes rendered data, sets restrictive response headers, and rejects stale form revisions. It exposes only explicit task operations and packet downloads, with no file server and no shell input.
 
-Profiles recommend reasoning and process to the participant's assistant. They do not control an external model's internal compute. Explicit inputs and conservative request-text rules are heuristics; automated classification has limitations. A short consequential task still gets strict attention.
+This is a trusted-user prototype, not an authorization boundary. Do not expose it through a tunnel or shared server. Exports are explicit and common secret paths are refused, but Relay is not a secret scanner, so inspect content before sending it to a person or provider.
 
-```sh
-relay start heading --goal "Fix the heading spelling" --accept "Spelling corrected" \
-  --kind transform --risk low --select draft.md
-relay escalate heading --note "The change revealed conflicting terminology"
-```
+## What is and is not established
 
-One escalation is permitted per task; it moves to Investigative. Further effort requires reassessing the scope. Source refresh preserves an already recorded escalation.
+| Established by offline tests                                   | Not established                                             |
+| -------------------------------------------------------------- | ----------------------------------------------------------- |
+| Routing rules, freshness, receipts, and review identity fields | Real user time savings                                      |
+| Corrupted packets, path boundaries, and symlink handling       | Live Jev quality or calibration                             |
+| Provider failures with mocked responses                        | Worker or assistant correctness                             |
+| HTTP forms, CSRF, and concurrent-edit handling                 | Resistance to prompt injection in general                   |
+|                                                                | Organizational authorization or managed compute enforcement |
 
-## When inputs change
+The [operational backcast](docs/relay-operational-backcast.md) lists the evidence still required before wider use. Its first gate, one observed collaboration, has not been run.
 
-```sh
-relay show faq
-relay refresh faq --note "The designated policy changed; reassess affected answers"
-relay context faq --out faq-context-v2.md
-```
-
-Freshness covers selected inputs, controls, submitted outputs, and evidence. Changes make acceptance due for review. Refresh creates a new input snapshot and clears the current submission/review; frozen packets, submission receipts, and review events remain. Rework and resubmit against the new snapshot. Refresh does not mean the changed facts were semantically validated.
-
-Task outputs must be separate from selected inputs and control files. This first release supports proposal handoffs; integrating edits into canonical sources is a separate action. The browser writes versioned files under `deliverables/`.
-
-## Optional Jev
-
-Relay calls the official [TypeSafe System One endpoint](https://docs.typesafe.ai/api/system-one) only when explicitly requested. It reads `TYPESAFE_API_KEY` from the process environment. Do not put the key into project files or Git.
-
-```sh
-relay start assessment --goal "Investigate conflicting product claims" \
-  --accept "Resolve conflicts with evidence" --select sources.md --jev shadow
-```
-
-`shadow` records judgments without affecting the route. `--jev route` can raise effort; it cannot lower a rule-selected profile or bypass blockers or review. The goal and selected non-control source contents are sent to TypeSafe, so select only information authorized for that provider. Missing credentials, timeouts, malformed responses, and provider errors retain the rules-only route and are visible in the record. No requests are retried automatically. Refresh does not reuse old Jev signals.
-
-The initial semantic threshold is a policy starting point, not a calibrated error bound. The adapter has offline mocked-response coverage; a live provider evaluation requires your own approved credentials and test cases. See [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md).
-
-## Storage and boundaries
-
-```text
-.context/
-  policy.md / project.md       Project control and authority
-  knowledge/                  Portable concepts
-  runs/                       Existing six-stage CLI runs
-  relay/tasks/<id>/
-    state.json                Current task, route and review events
-    packets/<sha256>.json     Frozen input snapshots
-    submissions/<sha256>.json Result/evidence receipts
-deliverables/                 Browser-submitted result/evidence versions
-```
-
-The `okf-icm` command remains available for the existing detailed stage workflow. Relay tasks share its path readers, hashing, section selection, knowledge validation, and cooperative lock. They do not silently complete legacy stages or rewrite the project graph. See [the task-layer protocol](docs/RELAY.md) and [original protocol](docs/PROTOCOL.md).
-
-The browser binds only to loopback, checks Host/Origin, uses CSRF tokens, escapes rendered content, and uses version checks for mutations. It serves no arbitrary files or shell commands. This is a trusted-user local tool, not an enterprise authorization boundary. Do not expose it through a public tunnel or shared server. A repository clone cannot hide confidential subfolders from its reader.
-
-Exports are explicit; common secret paths are refused, but this is not a secret scanner. Inspect content before sending it to a person or model provider.
-
-## Development and verification
+## Development
 
 ```sh
 python -m unittest discover -s tests -v
@@ -145,15 +263,14 @@ python examples/smoke.py
 python examples/relay_smoke.py
 ```
 
-CI runs the suite and smoke examples on Linux, macOS, and Windows. Live model quality and customer savings are separate evaluations.
+CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures are synthetic. Live model results and savings need separate, observed evidence. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Design documents
+## Documentation
 
-- [Product proposition and strategy](docs/relay-product-proposal.md)
-- [Adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md)
-- [Operational backcast](docs/relay-operational-backcast.md)
-- [First collaborator experiment](docs/relay-first-work-brief.md)
+- [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
+- [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
+- [Product proposition](docs/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/relay-operational-backcast.md), and [first collaborator experiment](docs/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
 
-The strategy documents retain their proposal history; current implemented behavior is described here and in [RELAY.md](docs/RELAY.md). Generate the synthetic example before following local `.context/` links; private execution history and machine-specific packets are not distributed with the repository.
+## License
 
-Independent implementation. See [attribution](ATTRIBUTION.md) and [MIT license](LICENSE). Naming does not imply endorsement by OKF, ICM, or TypeSafe.
+MIT. See [LICENSE](LICENSE) and [ATTRIBUTION.md](ATTRIBUTION.md). Naming does not imply endorsement by OKF, ICM, or TypeSafe.
