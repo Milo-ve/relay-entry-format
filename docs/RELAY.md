@@ -31,7 +31,7 @@ The task layer provides a compact lifecycle instead of silently creating and com
 
 ## Sources and packets
 
-Every task includes `.context/ENTRY.md`, `policy.md`, `project.md`, and `config.json`. Explicit `--select path` or `path#Exact Heading` selections add data. Selected knowledge retains its metadata signals. Source text cannot elevate its role by containing instructions.
+Entry, controls and packets follow [REF v1](REF.md). Every task includes `.context/ENTRY.md`, `policy.md`, `project.md`, and `config.json`. Explicit `--select path` or `path#Exact Heading` selections add data. Selected knowledge retains its metadata signals. Source text cannot elevate its role by containing instructions.
 
 Full-file SHA-256 hashes identify byte versions even for section selections. Selected files are bounded by the existing 1 MB reader and common-secret-path exclusions. The rendered packet has a character budget and fails before task creation if exceeded. No required source is silently omitted. These exclusions are not comprehensive secret detection.
 

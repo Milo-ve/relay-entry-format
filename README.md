@@ -6,6 +6,8 @@ Relay is a local, provider-neutral tool for handing a piece of work to an AI ass
 
 It works with the assistant you already use. Relay prepares the context and records the result; it does not call a model, run commands, or decide that a claim is true.
 
+The entry file, project controls, and packet that an assistant receives are specified as **REF**, the Relay Entry Format ([REF v1](docs/REF.md)). The rest of the lifecycle is the Relay Method.
+
 ```text
 Open the task → Understand its boundaries → Continue with your assistant → Return reviewable work
 ```
@@ -69,6 +71,8 @@ flowchart LR
 `relay list` and `relay show` recompute freshness at any time. `relay refresh` and `relay escalate` are covered below.
 
 ### What a packet carries
+
+A packet follows [REF v1](docs/REF.md).
 
 | Part     | Source                                                        | Treatment                                                                     |
 | -------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -269,6 +273,7 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 
 ## Documentation
 
+- [REF v1, Relay Entry Format](docs/REF.md): the entry, controls, and packet shape.
 - [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
 - [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
 - [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
