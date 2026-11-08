@@ -189,8 +189,8 @@ The decision threshold is an initial heuristic, not a calibrated error bound. Se
 Requires Python 3.11+. The only runtime dependency is PyYAML, and no model API is needed.
 
 ```sh
-git clone https://github.com/milo-ve/relay-okf-icm.git
-cd relay-okf-icm
+git clone https://github.com/milo-ve/relay-entry-format.git
+cd relay-entry-format
 python3 -m venv .venv
 source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install -e .
