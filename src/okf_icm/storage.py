@@ -72,12 +72,14 @@ def atomic_write(path: Path, text: str, *, exclusive: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if exclusive:
         # O_EXCL refuses existing files, including symlinks.
-        with path.open("x", encoding="utf-8") as handle:
+        with path.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
         return
     fd, name = tempfile.mkstemp(prefix=".ctx-", dir=path.parent)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        # Write LF on every platform so identical content has identical bytes
+        # (and hashes) on Windows, macOS and Linux.
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
         os.replace(name, path)
     finally:
