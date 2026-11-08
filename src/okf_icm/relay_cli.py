@@ -63,6 +63,8 @@ def parser():
     review.add_argument("--actor", required=True)
     review.add_argument("--note", required=True)
     review.add_argument("--expected-revision", type=int)
+    export = sub.add_parser("export-html", help="Write a self-contained, script-free snapshot of tasks and the knowledge map")
+    export.add_argument("--out", type=Path, required=True, help="New file; an existing file is never overwritten")
     serve = sub.add_parser("serve", help="Open a loopback-only local interface; no organizational authentication")
     serve.add_argument("--port", type=int, default=8765)
     return p
@@ -78,6 +80,11 @@ def main(argv=None):
             if args.command == "serve":
                 from .web import serve
                 serve(tasks, args.port)
+                return 0
+            if args.command == "export-html":
+                from .viz import export_html
+                atomic_write(args.out, export_html(tasks), exclusive=True)
+                print(json_text({"written": str(args.out), "note": "Contains goals, acceptance state, owners, reviewers and recorded events; no source or packet contents."}), end="")
                 return 0
             if args.command == "list":
                 result = tasks.list()

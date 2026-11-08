@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .storage import ContextError, atomic_write, identifier, json_text, lock
 from .tasks import EXPERIENCE, PRINCIPLE
+from .viz import VIZ_CSS, bundle_section, timeline_section
 
 CSS = """
 :root{--ink:#172d29;--muted:#53635e;--paper:#f6f7f2;--line:#d6ded6;--accent:#145b48;--white:#fff;--error:#943a2b}
@@ -25,7 +26,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);padding:16px;border-radius:6px;font-size:13px}details{margin-top:18px}summary{cursor:pointer;min-height:44px;padding:10px 0}.error{color:var(--error);border-left:4px solid var(--error);padding:16px;background:#fff3ed}
 .wide{grid-column:1/-1}.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:white;padding:12px}footer{padding:28px 0;color:var(--muted);font-size:13px}.steps{font-size:14px;word-spacing:2px;color:var(--accent)}
 @media(max-width:760px){.grid{grid-template-columns:1fr}header{padding:18px 24px}main{margin-top:28px}.panel{padding:20px}.tag{max-width:140px;text-align:right}}
-"""
+""" + VIZ_CSS
 
 
 def esc(value):
@@ -66,7 +67,7 @@ def handler(tasks):
 
         def page(self, title, content, status=200):
             self.response(f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)} · Relay</title><style nonce="{nonce}">{CSS}</style></head>'
-                          f'<body><a class="skip" href="#main">Skip to content</a><header><a href="/">Relay Method<span class="muted"> / local workspace</span></a><span class="tag">Portable context.<br>Proportional effort.</span></header><main id="main">{content}'
+                          f'<body><a class="skip" href="#main">Skip to content</a><header><a href="/">Relay Method<span class="muted"> / local workspace</span></a><nav><a href="/map">Knowledge map</a></nav><span class="tag">Portable context.<br>Proportional effort.</span></header><main id="main">{content}'
                           '<footer>Local trusted-user prototype. Reviewer identities are self-recorded. Assistant compute settings are advisory. No organization authentication or remote sharing.</footer></main></body></html>', status)
 
         def form(self, action, content, revision=None):
@@ -92,6 +93,8 @@ def handler(tasks):
                               + field("owner", "Task owner", "local-operator") + field("reviewer", "Reviewer", "local-reviewer")
                               + '<button type="submit">Open task</button>')
                     self.page("Your work", f'<p class="steps">OPEN → UNDERSTAND → CONTINUE → RETURN</p><h1>Pick up where work left off.</h1><p class="intro">{esc(EXPERIENCE)}</p><p class="intro">{esc(PRINCIPLE)}</p><div class="grid"><section class="panel"><h2>Your work</h2>{rows or "<p>No tasks yet. Open a task to prepare its first handoff.</p>"}</section><section class="panel"><h2>Start with an outcome</h2>{self.form("/start", create)}</section></div>')
+                elif path == "map":
+                    self.page("Knowledge map", f'<a href="/">← All tasks</a><h1>Knowledge map</h1><p class="intro">Concepts in <code>.context/knowledge</code> and the links between them. Trust and freshness are the bundle\'s own recorded signals; Relay does not verify them.</p><section class="panel">{bundle_section(tasks.ws)}</section>')
                 elif path.startswith("packet/"):
                     task = identifier(path.split("/", 1)[1])
                     self.response(tasks.context(task), content_type="text/markdown; charset=utf-8", download=True)
@@ -108,7 +111,7 @@ def handler(tasks):
                         review = self.form(f"/review/{task}", f'<input type="hidden" name="submission" value="{esc(s["submission"]["submission_id"])}">' + field("actor", "Reviewer (self-recorded)", s["reviewer"]) + field("note", "Review rationale", textarea=True) + '<label for="decision">Decision</label><select name="decision" id="decision"><option value="accept">Accept this version</option><option value="request_changes">Request changes</option></select><button>Record review</button>', rev)
                     operations = self.form(f"/refresh/{task}", field("note", "What changed or was resolved?", textarea=True) + '<label><input type="checkbox" name="resolve" value="yes"> I resolved the listed prerequisites</label><button>Refresh context</button>', rev)
                     escalation = self.form(f"/escalate/{task}", field("note", "Evidence requiring more effort", textarea=True) + '<button>Escalate effort</button>', rev)
-                    self.page(s["goal"], f'<a href="/">← All tasks</a><h1>{esc(s["goal"])}</h1>{changed}<span class="badge">{esc(s["status"])}</span><span class="badge">{esc(s["route"]["profile"])} effort</span><span class="badge">Sources: {esc(s["freshness"])}</span><div class="grid"><section class="panel"><h2>Understand the boundaries</h2><p>{esc(s["boundaries"])}</p><p>Owner: {esc(s["owner"])} · Reviewer: {esc(s["reviewer"])}</p><h3>Acceptance</h3><ul>{acceptance}</ul><h3>Selected sources</h3><ul>{source_items}</ul><p>Blockers: {esc("; ".join(s["blockers"]) or "None recorded")}</p><a class="button" href="/packet/{task}">Download assistant context</a><details><summary>Effort decision</summary><pre>{esc(json_text(s["route"]))}</pre></details></section><section class="panel"><h2>Return reviewable work</h2><p class="muted">The text below is saved as versioned result and evidence files. Describe checks you actually performed.</p>{self.form(f"/submit/{task}", submit, rev)}</section><section class="panel"><h2>Review this version</h2>{review}<details><summary>Submission and review record</summary><pre>{esc(json_text({"submission":s["submission"],"review":s["review"]}))}</pre></details></section><section class="panel"><h2>Adapt to new evidence</h2>{operations}<details><summary>Need more effort?</summary>{escalation}</details></section></div>')
+                    self.page(s["goal"], f'<a href="/">← All tasks</a><h1>{esc(s["goal"])}</h1>{changed}<span class="badge">{esc(s["status"])}</span><span class="badge">{esc(s["route"]["profile"])} effort</span><span class="badge">Sources: {esc(s["freshness"])}</span><div class="grid"><section class="panel"><h2>Understand the boundaries</h2><p>{esc(s["boundaries"])}</p><p>Owner: {esc(s["owner"])} · Reviewer: {esc(s["reviewer"])}</p><h3>Acceptance</h3><ul>{acceptance}</ul><h3>Selected sources</h3><ul>{source_items}</ul><p>Blockers: {esc("; ".join(s["blockers"]) or "None recorded")}</p><a class="button" href="/packet/{task}">Download assistant context</a><details><summary>Effort decision</summary><pre>{esc(json_text(s["route"]))}</pre></details></section><section class="panel"><h2>Return reviewable work</h2><p class="muted">The text below is saved as versioned result and evidence files. Describe checks you actually performed.</p>{self.form(f"/submit/{task}", submit, rev)}</section><section class="panel"><h2>Review this version</h2>{review}<details><summary>Submission and review record</summary><pre>{esc(json_text({"submission":s["submission"],"review":s["review"]}))}</pre></details></section><section class="panel"><h2>Adapt to new evidence</h2>{operations}<details><summary>Need more effort?</summary>{escalation}</details></section><section class="panel wide"><h2>History of this task</h2>{timeline_section(tasks, task)}</section></div>')
                 else:
                     self.page("Not found", '<h1>Page not found</h1><a href="/">Return to tasks</a>', 404)
             except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:

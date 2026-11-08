@@ -132,6 +132,8 @@ Everything Relay knows is on disk, so inspection needs no extra tooling:
 deliverables/                                         Versioned results written by the browser UI
 ```
 
+To see this state instead of reading JSON, run `relay --root PROJECT serve` for the knowledge map and per-task history, or `relay --root PROJECT export-html --out snapshot.html` for a static, script-free copy. See [Views](docs/RELAY.md#views).
+
 A project is a folder. Copy it, commit it, or zip it. Writes use a cooperative lock, and JSON files are replaced atomically. Packet creation and state updates are not a single database transaction, so after a crash, inspect the state before clearing a stale lock.
 
 ## Where this works

@@ -124,6 +124,16 @@ def concept_path(ws, cid: str):
     return contained(ws.path(".context/knowledge"), cid + ".md")
 
 
+def local_links(bundle, path, body: str):
+    """Yield (target, destination) for each relative Markdown link outside code fences."""
+    plain = re.sub(r"```.*?```", "", body, flags=re.S)
+    for target in re.findall(r"\[[^\]]+\]\(([^)\s]+)\)", plain):
+        url = urlsplit(target)
+        if url.scheme or not url.path:
+            continue
+        yield target, (bundle / unquote(url.path).lstrip("/")) if url.path.startswith("/") else (path.parent / unquote(url.path))
+
+
 def inspect_bundle(ws) -> dict:
     bundle = ws.path(".context/knowledge")
     concepts, errors, warnings = [], [], []
@@ -144,12 +154,7 @@ def inspect_bundle(ws) -> dict:
             concepts.append(item)
             if item["status"] != "stable" or item["freshness"] == "stale" or item["trust"] == "unverified":
                 warnings.append({"path": rel, "message": "Review advisory lifecycle/trust/freshness signals", "signals": item})
-            plain = re.sub(r"```.*?```", "", body, flags=re.S)
-            for target in re.findall(r"\[[^\]]+\]\(([^)\s]+)\)", plain):
-                url = urlsplit(target)
-                if url.scheme or not url.path:
-                    continue
-                dest = (bundle / unquote(url.path).lstrip("/")) if url.path.startswith("/") else (path.parent / unquote(url.path))
+            for target, dest in local_links(bundle, path, body):
                 if not dest.resolve().is_relative_to(bundle.resolve()):
                     warnings.append({"path": rel, "message": f"Link leaves bundle: {target}"})
                 elif not dest.exists():
