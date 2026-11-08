@@ -9,7 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import jev
+from . import guidance, jev
 from .packets import packet_hash, section
 from .routing import route, apply_jev, PROFILES
 from .storage import ContextError, atomic_write, digest, identifier, json_text, now, read_json, read_text
@@ -171,12 +171,14 @@ class Tasks:
             progress = "awaiting_review" if state["review_required"] else "submitted"
         else:
             progress = "ready"
-        return {"id": task, "goal": state["goal"], "owner": state["owner"], "reviewer": state["reviewer"],
-                "revision": state["revision"], "status": progress, "freshness": "changed" if changed else "current",
-                "changed": changed, "route": packet["route"], "packet_id": packet["packet_id"],
-                "acceptance": state["acceptance"], "boundaries": state["boundaries"], "blockers": state["blockers"],
-                "submission": submission, "review": review, "review_required": state["review_required"],
-                "identity_assurance": "self-recorded-local-assertion", "escalations": state["escalations"]}
+        result = {"id": task, "goal": state["goal"], "owner": state["owner"], "reviewer": state["reviewer"],
+                  "revision": state["revision"], "status": progress, "freshness": "changed" if changed else "current",
+                  "changed": changed, "route": packet["route"], "packet_id": packet["packet_id"],
+                  "acceptance": state["acceptance"], "boundaries": state["boundaries"], "blockers": state["blockers"],
+                  "submission": submission, "review": review, "review_required": state["review_required"],
+                  "identity_assurance": "self-recorded-local-assertion", "escalations": state["escalations"]}
+        result["next_step"] = guidance.next_step(result, guidance.command_prefix(self.root))
+        return result
 
     def list(self):
         folder = self.ws.path(".context/relay/tasks")
@@ -185,8 +187,13 @@ class Tasks:
     def context(self, task):
         state = self.load(task)
         status = self.status(task)
-        if status["changed"] or state["blockers"]:
-            raise ContextError("Resolve blockers or refresh changed inputs before exporting context.")
+        reasons = []
+        if status["changed"]:
+            reasons.append("Changed since the snapshot: " + guidance.listed(status["changed"]) + ". Refresh the context first.")
+        if state["blockers"]:
+            reasons.append("Open prerequisites: " + guidance.listed(state["blockers"]) + ". Resolve them, then refresh with the resolved flag.")
+        if reasons:
+            raise ContextError("Cannot export context. " + " ".join(reasons))
         return self.render_packet(self.packet(state))
 
     @staticmethod

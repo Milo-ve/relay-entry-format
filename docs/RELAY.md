@@ -16,14 +16,18 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `init PATH`              | Initialize the existing `.context` format without overwriting.                                                |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
-| `list`, `show ID`        | Compute current freshness and review state.                                |
-| `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers.                       |
+| `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`.                                |
+| `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
 | `submit ID`              | Bind separate result and evidence files to the current packet.                                                |
 | `review ID`              | Record a decision for the exact current submission and assigned reviewer name.                                |
 | `refresh ID`             | Snapshot current sources and clear the current submission and acceptance; retain history.                     |
 | `escalate ID`            | Explicitly increase effort to Investigative, with a reason and a one-escalation limit.                        |
 | `serve`                  | Serve the local forms and packet downloads on 127.0.0.1.                                                      |
 | `export-html --out FILE` | Write a self-contained, script-free snapshot of the knowledge map and every task's history. Never overwrites. |
+
+### Operator guidance
+
+`next_step` in `show`/`list` output is derived only from the computed status. It is advice for the operator: it is never written into a packet, grants no permission, and does not change task state. `context` prints its guidance on stderr, so stdout stays a clean packet; with `--out` it appears as `next_step` in the JSON result. When another task command is refused because inputs changed or prerequisites are open, the CLI prints the same advice after the error. Refusal messages raised by the library name the cause but not CLI commands, because the browser interface shows them too. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Sources and packets
 

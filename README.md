@@ -270,6 +270,7 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 ## Documentation
 
 - [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
+- [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
 - [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
 - [Product proposition](docs/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/relay-operational-backcast.md), and [first collaborator experiment](docs/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
 

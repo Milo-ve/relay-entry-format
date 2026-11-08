@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import sys
 
-from . import __version__
+from . import __version__, guidance
 from .routing import KINDS
 from .storage import ContextError, atomic_write, json_text, lock
 from .tasks import Tasks
@@ -70,6 +70,25 @@ def parser():
     return p
 
 
+def _failure_hint(args) -> None:
+    """After a refused task command, say what the task needs next. Never masks the original error.
+
+    Only when the task's state explains the refusal (changed inputs or open prerequisites);
+    for other errors, such as a bad path or a wrong reviewer name, advice would be noise.
+    """
+    task = getattr(args, "task", None)
+    if not task or args.command in {"start", "show", "list"}:
+        return
+    try:
+        tasks = Tasks(args.root)
+        status = tasks.status(task)
+        step = guidance.next_step(status, guidance.command_prefix(tasks.root))
+    except Exception:  # best effort: a corrupt task is reported by the original error
+        return
+    if step and status["status"] in {"needs_review", "blocked"}:
+        print(f"relay: next: {step}", file=sys.stderr)
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
@@ -92,11 +111,14 @@ def main(argv=None):
                 result = tasks.status(args.task)
             elif args.command == "context":
                 text = tasks.context(args.task)
+                hint = guidance.after_context(args.task, guidance.command_prefix(tasks.root))
                 if args.out:
                     atomic_write(args.out, text, exclusive=True)
-                    result = {"written": str(args.out)}
+                    result = {"written": str(args.out), "next_step": hint}
                 else:
                     print(text, end="")
+                    # stderr keeps the packet on stdout clean for piping.
+                    print(f"relay: next: {hint}", file=sys.stderr)
                     return 0
             else:
                 with lock(tasks.ws.home):
@@ -118,6 +140,7 @@ def main(argv=None):
         return 0
     except (ContextError, OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
         print(f"relay: {exc}", file=sys.stderr)
+        _failure_hint(args)
         return 2
 
 
