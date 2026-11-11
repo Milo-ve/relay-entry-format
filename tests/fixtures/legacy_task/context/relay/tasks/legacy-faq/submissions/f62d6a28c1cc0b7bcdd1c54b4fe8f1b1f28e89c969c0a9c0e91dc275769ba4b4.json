@@ -1,0 +1,20 @@
+{
+  "packet_id": "0fcce5296ff2c0f875e5eace0cffbb568f69c8351436eb56ecb22b45950a60fd",
+  "outputs": [
+    {
+      "path": "result.md",
+      "sha256": "a80de1f4a0728b987c0c948d45bf3461236cb895aea84af93071e933863ae702"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "checks.md",
+      "sha256": "49c8f395cf8c35c62d6fdc7393d9c585b2c662bc7c09ab1db24dec241da29d64"
+    }
+  ],
+  "checks": "Compared source",
+  "open_questions": "Cancellation unknown",
+  "next_action": "Review FAQ",
+  "at": "2026-11-11T18:08:46+00:00",
+  "submission_id": "f62d6a28c1cc0b7bcdd1c54b4fe8f1b1f28e89c969c0a9c0e91dc275769ba4b4"
+}

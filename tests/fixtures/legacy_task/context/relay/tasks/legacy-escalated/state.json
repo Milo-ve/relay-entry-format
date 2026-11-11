@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "legacy-escalated",
+  "goal": "Draft the pricing page",
+  "acceptance": [
+    "Use the current price"
+  ],
+  "selections": [
+    "policy.md"
+  ],
+  "kind": "auto",
+  "risk": "standard",
+  "owner": "local-operator",
+  "reviewer": "local-reviewer",
+  "boundaries": "Propose changes; no publishing or external actions.",
+  "blockers": [],
+  "review_required": true,
+  "jev_mode": "off",
+  "max_chars": 32000,
+  "revision": 2,
+  "events": [
+    {
+      "at": "2026-11-11T18:08:46+00:00",
+      "action": "start",
+      "profile": "standard"
+    },
+    {
+      "at": "2026-11-11T18:08:46+00:00",
+      "action": "escalate",
+      "note": "Scope grew after reading the history",
+      "resolved_by_operator": false
+    }
+  ],
+  "submission": null,
+  "review": null,
+  "escalations": 1,
+  "packets": [
+    "6e4277c5b1f014ceaa0183bf7ef81798633dac3261bcfbd597b20325d8036314",
+    "3f7a150e567a5a10c931872b8ed24e539ebcfba00543ba36c66d2fcb6bbc3670"
+  ],
+  "packet_id": "3f7a150e567a5a10c931872b8ed24e539ebcfba00543ba36c66d2fcb6bbc3670",
+  "updated_at": "2026-11-11T18:08:46+00:00"
+}
