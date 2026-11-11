@@ -309,6 +309,7 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 
 - [REF v1, Relay Entry Format](docs/REF.md): the entry, controls, and packet shape.
 - [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
+- [Adopting Relay](docs/ADOPTION.md): setup practices and which interface suits which audience. Recommendations only, with no measured savings.
 - [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
 - [CLI walkthrough](docs/WALKTHROUGH.md): one task from `start` to `review`, command by command.
 - [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
