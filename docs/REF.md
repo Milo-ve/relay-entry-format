@@ -47,9 +47,11 @@ The optional bundled `relay-workspace` skill connects an assistant to these
 controls. `relay skill --to DIRECTORY` installs it; `relay --root PROJECT workspace`
 previews workspace onboarding and `--apply` saves prior modified files and a
 layout inventory before appending an `AGENTS.md` entry pointing to the controls.
-New entry scaffolds describe both task and stage commands and this optional
-skill. Existing `.context` controls and packet shapes are unchanged. This bridge does
-not elevate source data or grant authority. See [workspace adaptation](RELAY.md#workspace-adaptation).
+New entry scaffolds describe both task and stage commands and name the
+optional skills in one sentence; the entry is part of every packet, so the
+default controls are kept under 2,500 characters. Existing `.context` controls
+and packet shapes are unchanged. This bridge does not elevate source data or
+grant authority. See [workspace adaptation](RELAY.md#workspace-adaptation).
 
 The optional portable `ref` skill extends that guidance to task handoffs and
 continuity. `relay skill --name ref --to DIRECTORY` copies its complete resource
@@ -61,7 +63,7 @@ client behavior.
 
 `relay workspace --claude` includes an optional `CLAUDE.md` import of the common
 `AGENTS.md` bridge. Applying saves originals before appending; existing controls,
-packets and stage graphs remain unchanged. New entry scaffolds mention `ref`.
+packets and stage graphs remain unchanged.
 These assistant instructions are an adapter to REF, not additional control files,
 a new packet kind or a replacement for explicit reviewer decisions.
 

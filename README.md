@@ -269,7 +269,7 @@ references. Inspect visible local/global copies if discovery is ambiguous.
 For a requested Claude instruction bridge, preview
 `relay --root PROJECT workspace --claude`, then add `--apply` to back up and
 append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
-scaffolds mention `ref`; existing controls are preserved. Physical file
+scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
 reorganization, MCP and publishing are later deliveries in the
 [implementation plan](docs/ref-command-plan.md).
 
