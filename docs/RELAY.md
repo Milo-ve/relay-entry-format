@@ -124,9 +124,18 @@ The optional library-level `review_required=False` skips the pending-human-revie
 
 ## Concurrency and local HTTP
 
-CLI/UI writes use the existing cooperative `.context/write.lock`. Browser forms include a task revision and reject stale mutations. Local JSON replacement is atomic; packet creation plus state mutation is not a database transaction. External editors are not locked. After a crash, inspect state and confirm the process stopped before clearing a stale lock.
+CLI/UI writes use the existing cooperative `.context/write.lock`. A writer that finds it held waits up to 5 seconds, then stops with the holder's process ID and start time. Set `lock_wait_seconds` to `0` for the earlier fail-at-once behaviour. Browser forms include a task revision and reject stale mutations. Local JSON replacement is atomic; packet creation plus state mutation is not a database transaction. External editors are not locked. After a crash, inspect state and confirm the process stopped before clearing a stale lock.
 
 The UI checks Host and Origin, includes a per-server CSRF token, escapes rendered data, and sets restrictive response headers. It exposes only explicit task operations and packet downloads, not a general file server. It accepts no shell command strings. Keep it on loopback; source confidentiality and authentic review require a future authorization layer.
+
+## Settings
+
+Optional tool settings live in `.context/relay/settings.json`. Relay never creates the file; without it every default applies. Settings are not controls: they are not part of any packet, so editing them does not make a task stale, and existing projects gain no marker. An unknown key or a wrong type is refused with the key's name, so a typo cannot silently disable a rule.
+
+| Key | Default | Effect |
+| --- | --- | --- |
+| `lock_wait_seconds` | `5` | How long a writer waits for `write.lock`, 0 to 300. `0` fails at once. |
+| `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `submit` and `review` are refused without `--expected-revision`. |
 
 ## Verification limits
 

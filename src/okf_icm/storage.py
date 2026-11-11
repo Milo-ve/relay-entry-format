@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import time
 
 
 class ContextError(ValueError):
@@ -87,13 +88,30 @@ def atomic_write(path: Path, text: str, *, exclusive: bool = False) -> None:
             os.unlink(name)
 
 
-@contextmanager
-def lock(workspace: Path):
-    path = workspace / "write.lock"
+def _holder(path: Path) -> str:
+    """Describe who holds the lock, or an empty string if the file is not readable yet."""
     try:
-        handle = path.open("x", encoding="utf-8")
-    except FileExistsError as exc:
-        raise ContextError("Workspace writer is busy (write.lock). If a process crashed, confirm it stopped before removing the lock.") from exc
+        held = json.loads(path.read_text(encoding="utf-8"))
+        return f", held by process {held['pid']} since {held['at']}"
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+
+
+@contextmanager
+def lock(workspace: Path, wait: float = 0.0):
+    """Cooperative writer lock. Poll for up to `wait` seconds; 0 fails at once."""
+    path = workspace / "write.lock"
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            handle = path.open("x", encoding="utf-8")
+            break
+        except FileExistsError as exc:
+            if time.monotonic() >= deadline:
+                waited = f" after waiting {wait:g}s" if wait else ""
+                raise ContextError(f"Workspace writer is busy (write.lock{_holder(path)}){waited}. "
+                                   "If a process crashed, confirm it stopped before removing the lock.") from exc
+            time.sleep(0.05)
     try:
         with handle:
             handle.write(json_text({"pid": os.getpid(), "at": now()}))

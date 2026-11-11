@@ -8,7 +8,7 @@ import sys
 
 from . import __version__, guidance
 from .routing import KINDS
-from .storage import ContextError, atomic_write, json_text, lock
+from .storage import ContextError, atomic_write, json_text
 from .tasks import Tasks
 from .workspace import initialize
 
@@ -139,7 +139,7 @@ def main(argv=None):
                     print(f"relay: next: {hint}", file=sys.stderr)
                     return 0
             else:
-                with lock(tasks.ws.home):
+                with tasks.writer():
                     if args.command == "start":
                         result = tasks.start(args.task, args.goal, args.accept, args.select, args.kind, args.risk,
                                              args.owner, args.reviewer, args.blocker, args.boundaries,

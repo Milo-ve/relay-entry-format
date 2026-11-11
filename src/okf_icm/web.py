@@ -7,7 +7,7 @@ import json
 import secrets
 from urllib.parse import parse_qs, urlparse
 
-from .storage import ContextError, atomic_write, identifier, json_text, lock
+from .storage import ContextError, atomic_write, identifier, json_text
 from .tasks import EXPERIENCE, PRINCIPLE
 from .viz import VIZ_CSS, bundle_section, timeline_section
 
@@ -129,7 +129,7 @@ def handler(tasks):
                 if not secrets.compare_digest(data.get("csrf", ""), csrf):
                     raise ContextError("Form expired or invalid. Reload the page.")
                 path = urlparse(self.path).path.strip("/")
-                with lock(tasks.ws.home):
+                with tasks.writer():
                     if path == "start":
                         task = identifier(data["id"])
                         tasks.start(task, data["goal"], data["acceptance"].splitlines(),

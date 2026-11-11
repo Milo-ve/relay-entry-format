@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import tempfile
 
+from . import settings
 from .storage import ContextError, atomic_write, json_text, lock, now
 from .workspace import Workspace, initialize
 from .skill_distribution import install_skill  # compatibility for existing library callers
@@ -30,7 +31,7 @@ def adapt_workspace(root: Path, name: str, *, apply: bool = False, claude: bool 
     root = root.resolve()
     if apply and (root / ".context").is_dir() and not (root / ".context").is_symlink():
         # Coordinate with task/stage writers when a workspace already exists.
-        with lock(root / ".context"):
+        with lock(root / ".context", wait=settings.load(root / ".context")["lock_wait_seconds"]):
             return _adapt_workspace(root, name, apply=apply, claude=claude)
     return _adapt_workspace(root, name, apply=apply, claude=claude)
 

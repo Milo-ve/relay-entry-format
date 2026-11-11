@@ -9,10 +9,10 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import guidance, jev
+from . import guidance, jev, settings
 from .packets import packet_hash, section
 from .routing import route, apply_jev, PROFILES
-from .storage import ContextError, atomic_write, digest, identifier, json_text, now, read_json, read_text
+from .storage import ContextError, atomic_write, digest, identifier, json_text, lock, now, read_json, read_text
 from .workspace import Workspace
 
 EXPERIENCE = "Open the task. Understand its boundaries. Continue with your preferred assistant. Return reviewable work."
@@ -31,6 +31,14 @@ class Tasks:
         self.ws = Workspace(root)
         self.root = self.ws.root
 
+    def settings(self) -> dict:
+        """Optional tool settings, read fresh each time so edits apply without a restart."""
+        return settings.load(self.ws.home)
+
+    def writer(self):
+        """Writer lock that waits for the configured time before reporting the workspace as busy."""
+        return lock(self.ws.home, wait=self.settings()["lock_wait_seconds"])
+
     def home(self, task: str) -> Path:
         return self.ws.path(f".context/relay/tasks/{identifier(task)}")
 
@@ -47,6 +55,9 @@ class Tasks:
         atomic_write(self.home(state["id"]) / "state.json", json_text(state))
 
     def check_revision(self, state, expected):
+        if expected is None and self.settings()["require_expected_revision"]:
+            raise ContextError("This workspace requires the expected revision (settings.json). "
+                               f"Read the current one with `relay show {state['id']}` and pass it as --expected-revision.")
         if expected is not None and expected != state["revision"]:
             raise ContextError("Task changed. Reload its current version before submitting this action.")
 

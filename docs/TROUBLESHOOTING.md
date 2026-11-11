@@ -83,8 +83,11 @@ A task allows one escalation, to Investigative. Either it is already used, or th
 **`Task changed. Reload its current version before submitting this action.`**
 `--expected-revision` is older than the task, so another action ran first. Run `relay show TASK` and repeat the action if it still applies. Nothing was overwritten.
 
-**`Workspace writer is busy (write.lock).`**
-Another Relay command or `relay serve` holds the lock, or a crashed one left it. See [A stuck lock](#a-stuck-lock).
+**`Workspace writer is busy (write.lock, held by process N since TIME) after waiting 5s.`**
+Another Relay command or `relay serve` holds the lock, or a crashed one left it. A command waits 5 seconds first, so a short overlap with another writer resolves itself; see `lock_wait_seconds` in [Settings](RELAY.md#settings). See [A stuck lock](#a-stuck-lock).
+
+**`This workspace requires the expected revision (settings.json).`**
+`require_expected_revision` is on. Run `relay show TASK` and pass its `revision` as `--expected-revision`.
 
 **`Task packet is modified or corrupt.`**
 A packet no longer matches its hash. See [A corrupt packet](#a-corrupt-packet).
