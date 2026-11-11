@@ -21,6 +21,8 @@ def parser():
     init = sub.add_parser("init", help="Initialize a project without overwriting existing state")
     init.add_argument("path", type=Path, nargs="?")
     init.add_argument("--name", default="Relay project")
+    init.add_argument("--minimal", action="store_true",
+                      help="One-stage workflow: a smaller config.json, so every packet is smaller. Default init is unchanged")
     skill = sub.add_parser("skill", help="Install or export a bundled skill without overwriting")
     from .skill_distribution import SKILLS
     skill.add_argument("--name", choices=SKILLS, default="relay-workspace")
@@ -31,6 +33,7 @@ def parser():
     setup = sub.add_parser("workspace", help="Preview workspace adaptation; --apply backs up before writing")
     setup.add_argument("--apply", action="store_true")
     setup.add_argument("--name", default="Relay project")
+    setup.add_argument("--minimal", action="store_true", help="When this creates the workspace, use the one-stage workflow (as `init --minimal`)")
     setup.add_argument("--claude", action="store_true", help="Also back up and append a CLAUDE.md import of AGENTS.md")
     start = sub.add_parser("start", help="Create a task, choose effort, and snapshot selected inputs")
     start.add_argument("task")
@@ -117,14 +120,14 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         if args.command == "init":
-            result = initialize(args.path or args.root, args.name)
+            result = initialize(args.path or args.root, args.name, args.minimal)
         elif args.command == "skill":
             from .skill_distribution import export_skill, install_skill
             result = (install_skill(args.to, args.name) if args.to else
                       export_skill(args.manual or args.zip, args.name, manual=args.manual is not None))
         elif args.command == "workspace":
             from .onboarding import adapt_workspace
-            result = adapt_workspace(args.root, args.name, apply=args.apply, claude=args.claude)
+            result = adapt_workspace(args.root, args.name, apply=args.apply, claude=args.claude, minimal=args.minimal)
         else:
             tasks = Tasks(args.root)
             if args.command == "serve":

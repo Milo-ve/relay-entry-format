@@ -14,11 +14,11 @@ The task layer provides a compact lifecycle instead of silently creating and com
 
 | Command                  | Effect                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `init PATH`              | Initialize the existing `.context` format without overwriting.                                                |
+| `init PATH [--minimal]`  | Initialize the existing `.context` format without overwriting. `--minimal` writes a one-stage `config.json` (stage `01-work`) and one stage contract instead of six; see [Minimal workspace](#minimal-workspace). |
 | `skill [--name ref] --to DIRECTORY` | Install a complete bundled skill tree; default remains `relay-workspace`; refuse different contents. |
 | `skill [--name ref] --zip FILE` | Export the complete skill folder as a new ZIP; never overwrite. |
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
-| `workspace [--apply] [--claude]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. |
+| `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -86,6 +86,14 @@ packet and returns separate result and evidence bodies without claiming writes.
 The operator checks packet identity and freshness before recording the return;
 review remains an explicit separate decision. See [validation](ref-validation.md)
 for observed checks and outstanding client gates. No MCP server is included.
+
+## Minimal workspace
+
+`config.json` is a control, so every task packet carries it. The default six-stage graph is only useful if you run the stage protocol; for task-only use, `relay init PATH --minimal` (or `workspace --apply --minimal` when it creates the workspace) writes a one-stage workflow, `01-work`, with one contract. It is a smaller `config.json`, nothing more: tasks, review and packets work the same, and `okf-icm` can still run its single stage.
+
+Measured with the offline test fixture (one one-line source, goal `Goal`), the rendered task packet is 4,268 characters with `--minimal` and 5,276 with the default scaffold. Other fixtures give other totals; the saving is about the size of the six-stage `config.json`. This is a size measurement, not a measured saving in model cost or time.
+
+Default `init` is unchanged. `--minimal` never changes an existing `.context`, and adds no version marker to a project; to shrink an existing project, edit its controls yourself, knowing that every task then needs a refresh (see [REF](REF.md)).
 
 ## Sources and packets
 

@@ -49,7 +49,9 @@ previews workspace onboarding and `--apply` saves prior modified files and a
 layout inventory before appending an `AGENTS.md` entry pointing to the controls.
 New entry scaffolds describe both task and stage commands and name the
 optional skills in one sentence; the entry is part of every packet, so the
-default controls are kept under 2,500 characters. Existing `.context` controls
+default controls are kept under 2,500 characters. `relay init --minimal`
+creates the same controls with a one-stage `config.json`; it is chosen only at
+creation and leaves no marker. Existing `.context` controls
 and packet shapes are unchanged. This bridge does not elevate source data or
 grant authority. See [workspace adaptation](RELAY.md#workspace-adaptation).
 

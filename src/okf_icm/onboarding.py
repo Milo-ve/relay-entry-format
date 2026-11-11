@@ -27,16 +27,16 @@ IGNORES = ("/.context/", "/.relay-backups/", "/deliverables/", "/.venv/", ".env*
 CLAUDE_ENTRY = "<!-- relay-claude -->\n@AGENTS.md\n<!-- /relay-claude -->\n"
 
 
-def adapt_workspace(root: Path, name: str, *, apply: bool = False, claude: bool = False) -> dict:
+def adapt_workspace(root: Path, name: str, *, apply: bool = False, claude: bool = False, minimal: bool = False) -> dict:
     root = root.resolve()
     if apply and (root / ".context").is_dir() and not (root / ".context").is_symlink():
         # Coordinate with task/stage writers when a workspace already exists.
         with lock(root / ".context", wait=settings.load(root / ".context")["lock_wait_seconds"]):
-            return _adapt_workspace(root, name, apply=apply, claude=claude)
-    return _adapt_workspace(root, name, apply=apply, claude=claude)
+            return _adapt_workspace(root, name, apply=apply, claude=claude, minimal=minimal)
+    return _adapt_workspace(root, name, apply=apply, claude=claude, minimal=minimal)
 
 
-def _adapt_workspace(root: Path, name: str, *, apply: bool, claude: bool) -> dict:
+def _adapt_workspace(root: Path, name: str, *, apply: bool, claude: bool, minimal: bool) -> dict:
     root = root.resolve()
     if not root.is_dir():
         raise ContextError("Workspace must be an existing directory.")
@@ -47,6 +47,8 @@ def _adapt_workspace(root: Path, name: str, *, apply: bool, claude: bool) -> dic
         if path.is_symlink():
             raise ContextError(f"Workspace setup refuses symlinks: {relative}")
     existing = (root / ".context").exists()
+    if existing and minimal:
+        raise ContextError("--minimal only applies when a workspace is created; an existing workspace is never rewritten.")
     if existing:
         Workspace(root)  # validate, never migrate or rewrite existing controls
         for relative in ("ENTRY.md", "policy.md", "project.md"):
@@ -78,7 +80,8 @@ def _adapt_workspace(root: Path, name: str, *, apply: bool, claude: bool) -> dic
                 continue
             addition = "# Relay local state (may contain private data)\n" + "\n".join(missing) + "\n"
         changes[relative] = (originals[relative] or b"") + (b"\n" if text and not text.endswith("\n\n") else b"") + addition.encode("utf-8")
-    result = {"root": str(root), "initialize": not existing, "update": list(changes), "applied": False}
+    result = {"root": str(root), "initialize": not existing, "update": list(changes), "applied": False,
+              **({"minimal": True} if minimal else {})}
     if not apply or (existing and not changes):
         return result
     # Inventory only: never copy secrets or traverse symlinked directories.
@@ -109,5 +112,5 @@ def _adapt_workspace(root: Path, name: str, *, apply: bool, claude: bool) -> dic
         # Preserve original bytes (including line endings) when appending.
         atomic_write(root / relative, content.decode("utf-8"), exclusive=originals[relative] is None)
     if not existing:
-        initialize(root, name)
+        initialize(root, name, minimal)
     return {**result, "applied": True, "backup": str(backup)}

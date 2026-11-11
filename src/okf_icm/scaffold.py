@@ -9,7 +9,14 @@ STAGES = [
 ]
 
 
-def config(name: str) -> dict:
+MINIMAL_STAGE = ("01-work", "Do the task, record changed paths, and check the result against the acceptance criteria. Document limitations.")
+
+
+def config(name: str, minimal: bool = False) -> dict:
+    if minimal:
+        stage, _ = MINIMAL_STAGE
+        return {"schema_version": 1, "name": name,
+                "stages": [{"id": stage, "needs": [], "contract": f".context/stages/{stage}/CONTEXT.md", "requires_evidence": True}]}
     return {
         "schema_version": 1, "name": name,
         "stages": [
@@ -21,7 +28,7 @@ def config(name: str) -> dict:
     }
 
 
-def files(name: str) -> dict[str, str]:
+def files(name: str, minimal: bool = False) -> dict[str, str]:
     result = {
         "ENTRY.md": """# Portable workspace entry
 
@@ -53,7 +60,7 @@ Stable knowledge is reusable, but its verification and freshness must be checked
         "knowledge/index.md": '---\nokf_version: "0.2"\n---\n# Knowledge\n\nNo concepts yet.\n',
         "knowledge/log.md": "# Knowledge updates\n",
     }
-    for stage, purpose in STAGES:
+    for stage, purpose in ([MINIMAL_STAGE] if minimal else STAGES):
         result[f"stages/{stage}/CONTEXT.md"] = f"""# {stage}
 
 ## Inputs

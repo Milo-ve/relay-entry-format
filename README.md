@@ -212,7 +212,7 @@ relay init ./my-project --name "My project"
 relay --root ./my-project serve
 ```
 
-`init` refuses to overwrite an existing `.context/`. Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
+`init` refuses to overwrite an existing `.context/`. For task-only use, `relay init ./my-project --minimal` writes a one-stage `config.json`, which makes every packet smaller (see [Minimal workspace](docs/RELAY.md#minimal-workspace)). Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
 
 ### Adapt an existing workspace with a skill
 
