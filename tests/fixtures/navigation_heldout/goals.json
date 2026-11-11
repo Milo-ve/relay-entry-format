@@ -1,0 +1,273 @@
+{
+  "frozen": "Expected sets written and committed before any knowledge base file for this held-out fixture existed, and before this author ran any baseline or method. After the goals-only commit, never edit expected sets; fix the knowledge base if it disagrees. This freezes an independent synthetic judgment set, not observed performance.",
+  "company": "Morrowglass Kilnworks (fictional, synthetic ceramics manufacturer). No real organization, person, price or policy.",
+  "author_note": "Written by a Codex session (model: GPT-6) that had not seen the method design. Not reviewed by a human.",
+  "id_format": "A concept id is its bundle-relative path without .md. 'id#slug' means only that section (slug = lowercase heading, spaces to hyphens) is needed; the other sections of that file are not.",
+  "metrics": {
+    "unit": "Concept level. A returned 'id#slug' counts as a hit for 'id'. Sections are reported separately.",
+    "precision": "|returned ∩ expected| / |returned|. A goal that returns nothing scores 0.",
+    "recall": "|returned ∩ expected| / |expected|.",
+    "aggregate": "Macro mean over goals that are not gaps. Gap goals are reported separately: how many concepts a method returned for them, and whether it said there is a gap.",
+    "characters": "Characters (Python len) of the text actually loaded: the whole file for a concept, the section text for 'id#slug'.",
+    "hazard": "A returned concept is a hazard when status != stable, or freshness == stale, or trust == unverified: the same condition knowledge.inspect_bundle uses to warn. A hazard is 'silent' when the method gave no flag for it.",
+    "universe": "The permitted universe is every concept that parses, validates, is readable and is not matched by deny_paths. Select-everything means that whole universe."
+  },
+  "baselines": {
+    "select_everything": "Every concept in the permitted universe, whole files.",
+    "keyword": {
+      "keywords": "re.findall('[a-z0-9]+', goal.lower()), keeping tokens with at least 4 characters that are not in stopwords. No stemming, no synonyms.",
+      "match": "A keyword matches a concept when it occurs as a substring of the concept's full file text, lowercased (title, tags, description and body), as grep -i would.",
+      "score": "Number of distinct keywords that match.",
+      "keyword_any": "Every concept with score >= 1, whole files.",
+      "keyword_top5": "The 5 highest scores (ties by id ascending), score >= 1, whole files."
+    },
+    "stopwords": [
+      "about",
+      "after",
+      "also",
+      "been",
+      "before",
+      "being",
+      "cannot",
+      "could",
+      "customer",
+      "customers",
+      "does",
+      "each",
+      "from",
+      "have",
+      "into",
+      "just",
+      "later",
+      "make",
+      "many",
+      "more",
+      "most",
+      "must",
+      "need",
+      "only",
+      "other",
+      "over",
+      "should",
+      "some",
+      "such",
+      "than",
+      "that",
+      "their",
+      "them",
+      "then",
+      "there",
+      "these",
+      "they",
+      "this",
+      "through",
+      "what",
+      "when",
+      "where",
+      "which",
+      "while",
+      "will",
+      "with",
+      "would",
+      "your",
+      "first",
+      "write",
+      "explain",
+      "check",
+      "decide",
+      "prepare",
+      "produce",
+      "handle",
+      "respond",
+      "answer",
+      "summarize"
+    ]
+  },
+  "acceptance_for_a_navigator": {
+    "declared_before_any_navigator_exists": false,
+    "must_all_hold": [
+      "On non-gap goals, mean recall >= keyword_top5 mean recall.",
+      "On non-gap goals, mean precision > keyword_top5 mean precision.",
+      "Mean characters loaded per goal < select_everything characters.",
+      "Zero silent hazards: every deprecated, draft, stale or unverified concept that is returned carries an explicit flag, and the goals listed in must_warn return the concept with that flag rather than dropping it.",
+      "Every gap goal returns an explicit gap and no guessed source.",
+      "No denied or sensitive path appears anywhere in the output, even as a name in a 'left out' list.",
+      "Identical input and workspace give byte-identical output."
+    ],
+    "if_not_met": "Report it and stop. Do not change the fixtures or the expected sets.",
+    "declaration_scope": "Frozen before this author saw any method design. No assertion about whether a method already exists. The criteria below are copied from the reference fixture for comparability."
+  },
+  "goals": [
+    {
+      "id": "h01-cooling-release",
+      "goal": "At what point may an operator open the Amber kiln after a normal firing, and what must be checked before unlatching?",
+      "expected": [
+        "kilns/firing-handbook#cooling-release"
+      ],
+      "why": "The current firing handbook alone specifies the opening threshold and the latch checks. The previous edition, pocket summary and FAQ are not current sources."
+    },
+    {
+      "id": "h02-mixed-glaze-pots",
+      "goal": "Can a remnant of glaze G4 be poured into G9, and how should the remaining pots and their batch identities be handled?",
+      "expected": [
+        "materials/glaze-pairing#mixing-boundary",
+        "materials/remnant-handling",
+        "records/trace-map#pot-identities"
+      ],
+      "why": "The compatibility rule, physical disposition of remnants and mapping of pot identifiers are separate facts; none of the three substitutes for another."
+    },
+    {
+      "id": "h03-pinholes",
+      "goal": "Classify pinholes on a fired serving tile: which sizes go to rework and which cause rejection?",
+      "expected": [
+        "bench/surface-rubric#pinholes"
+      ],
+      "why": "One section of the inspection rubric contains the grading boundaries. A glossary explains the term but supplies no grading authority."
+    },
+    {
+      "id": "h04-hold-a-run",
+      "goal": "A cooled production run has an unexplained defect. How do we hold it out of dispatch and who may release it?",
+      "expected": [
+        "bench/quarantine#red-tag-and-release"
+      ],
+      "why": "Hold means isolation here. The kiln dwell-time document describes a thermal hold and cannot authorize release."
+    },
+    {
+      "id": "h05-r7-amber-load",
+      "goal": "Load body R7 in the Amber kiln: what is the permitted shelf clearance and which foot ring is required for this body?",
+      "expected": [
+        "kilns/load-patterns#amber-shelf-clearance",
+        "materials/body-register#body-r7"
+      ],
+      "why": "The equipment clearance and the body-specific foot ring are maintained separately. A decorative product called Amber is irrelevant."
+    },
+    {
+      "id": "h06-sensor-replacement",
+      "goal": "Replace the kiln thermocouple and determine what check is required before production resumes.",
+      "expected": [
+        "kilns/sensor-change",
+        "kilns/calibration#post-change-check"
+      ],
+      "why": "The change procedure handles the hardware; the calibration section supplies the independent post-change acceptance check."
+    },
+    {
+      "id": "h07-crate-pool-contact",
+      "goal": "Which recorded desk handles a damaged returnable crate from the external crate pool?",
+      "expected": [
+        "records/crate-pool-contact"
+      ],
+      "must_warn": [
+        "records/crate-pool-contact"
+      ],
+      "why": "This stale directory is the sole recorded source. Return it with an explicit staleness warning, without treating its contact assignment as current."
+    },
+    {
+      "id": "h08-oblong-sample",
+      "goal": "How must an oblong demonstration sample be packed in a wooden crate for a local shipment?",
+      "expected": [
+        "dispatch/crating#oblong-samples"
+      ],
+      "why": "The sample-specific section is sufficient. The section for stacked production tiles and the carton guide govern different shapes."
+    },
+    {
+      "id": "h09-blue-card",
+      "goal": "A kiln operator asks for the blue card beside the witness piece. What must be written on it and where does it travel?",
+      "expected": [
+        "bench/witness-coupons#travelling-card"
+      ],
+      "why": "The travelling coupon record is locally called a blue card. The studio artwork sheet has the obvious title but is a print-design specification."
+    },
+    {
+      "id": "h10-split-lot",
+      "goal": "Split one fired lot between two outgoing crates without losing the link to its raw body batch. Which identifiers must be recorded and printed?",
+      "expected": [
+        "records/trace-map#split-lots",
+        "dispatch/labels#split-crate-labels"
+      ],
+      "why": "The lot lineage and the physical label requirements are complementary. A recorder CSV export does not define either."
+    },
+    {
+      "id": "h11-reclaim-separation",
+      "goal": "Why are pale and dark clay reclaim kept apart, and what bins and transfer rules apply now?",
+      "expected": [
+        "records/decision-reclaim-split",
+        "materials/reclaim-streams"
+      ],
+      "why": "The decision supplies the reason; the current streams sheet supplies the operative bin and transfer rules. The retired common-bin sheet is historical."
+    },
+    {
+      "id": "h12-silver-bloom",
+      "goal": "Inspect a silver bloom on an otherwise clear fired surface: how is it graded and what observation distinguishes it from loose contamination?",
+      "expected": [
+        "bench/surface-rubric#silver-bloom",
+        "bench/contamination-check#dry-wipe-observation"
+      ],
+      "why": "The defect grading and the nonabrasive observation criterion are distinct. The Silver Bloom colour sample is a named decorative finish, not a defect rule."
+    },
+    {
+      "id": "h13-power-interruption",
+      "goal": "Power failed during the ramp of a production firing. What immediate disposition applies and what interruption fields belong in the run journal?",
+      "expected": [
+        "kilns/power-interruption#record-and-isolate",
+        "records/run-journal#interruption-fields"
+      ],
+      "why": "The procedure supplies disposition and the journal schema supplies the exact fields. Neither allows assuming the interrupted run passed."
+    },
+    {
+      "id": "h14-trial-handoff",
+      "goal": "Hand an experimental glaze trial to the next studio shift, including its specimen envelope and the material identity that accompanies it.",
+      "expected": [
+        "studio/trial-handoff",
+        "bench/trial-envelope",
+        "materials/trial-codes"
+      ],
+      "why": "The handoff sequence, envelope contents and interpretation of trial material codes are maintained in three separate concepts."
+    },
+    {
+      "id": "h15-extraction-capacity",
+      "goal": "What verified airflow capacity and pressure setpoint are required for the proposed third grinding booth?",
+      "expected": [],
+      "gap": true,
+      "why": "No permitted source establishes engineering requirements for the proposed third booth. A link to a future design calculation is unresolved; existing housekeeping notes do not supply the missing numbers."
+    },
+    {
+      "id": "h16-opalveil-ratios",
+      "goal": "Give the master concentrate ratios for the Opalveil finish.",
+      "expected": [],
+      "gap": true,
+      "denied": true,
+      "why": "The formulation exists only in a denied folder. No permitted source contains the ratios, and the answer must not disclose denied paths or titles."
+    },
+    {
+      "id": "h17-dotted-red-square",
+      "goal": "A transit indicator shows a dotted red square on an arriving crate. What does that mean and what should receiving do?",
+      "expected": [
+        "dispatch/transit-indicators#dotted-red-square"
+      ],
+      "why": "This packaging symbol has a specific receiving action. It is unrelated to the solid red bench isolation tag."
+    },
+    {
+      "id": "h18-food-contact-certificate",
+      "goal": "Supply the jurisdiction-specific food-contact certificate for the new Vela cup line.",
+      "expected": [],
+      "gap": true,
+      "why": "No certificate or applicable jurisdictional approval exists in the permitted corpus. Marketing language and shape drawings cannot establish certification."
+    },
+    {
+      "id": "h19-zero-point",
+      "goal": "Before measuring a rim, how should the inspector establish the zero point on the bridge gauge and record a failed check?",
+      "expected": [
+        "bench/measurement-manual#bridge-zero"
+      ],
+      "why": "The gauge setup section specifies both the reference block and failure record. Zero Point is also the title of a studio exhibition with no measuring authority."
+    },
+    {
+      "id": "h20-warped-rim",
+      "goal": "Using the bridge gauge, which rim-warp readings accept a Vela cup, and how many orientations must be measured?",
+      "expected": [
+        "bench/measurement-manual#warped-rim"
+      ],
+      "why": "Only the rim-warp section is needed; the rest of the long manual covers other instruments and measurements. The cup drawing deliberately delegates acceptance tolerances to this section."
+    }
+  ]
+}
