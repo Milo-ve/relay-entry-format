@@ -199,8 +199,8 @@ def _ref(review: dict) -> str:
     return f" · reference: {review['external_ref']} (recorded, not verified)" if review.get("external_ref") else ""
 
 
-def strip(model: dict) -> str:
-    s = model["status"]
+def states(s: dict) -> tuple[str, str, str]:
+    """The three separate answers about a task: are the sources current, was work returned, was it accepted."""
     sources = "Current" if not s["changed"] else "Changed since selected: " + ", ".join(s["changed"])
     work = "Returned for this version" if s["submission"] else "Not returned yet"
     review = s["review"]
@@ -212,6 +212,11 @@ def strip(model: dict) -> str:
         accepted = "Blocked: " + "; ".join(s["blockers"])
     else:
         accepted = "Not accepted"
+    return sources, work, accepted
+
+
+def strip(model: dict) -> str:
+    sources, work, accepted = states(model["status"])
     return ('<dl class="strip">'
             f'<div><dt>Selected sources</dt><dd>{esc(sources)}</dd></div>'
             f'<div><dt>Work and reported checks</dt><dd>{esc(work)}</dd><span class="muted">Checks are as reported by the submitter; Relay does not verify them.</span></div>'
@@ -265,11 +270,16 @@ section{background:var(--white);border:1px solid var(--line);border-radius:12px;
 """
 
 
+def csp_for(css: str) -> str:
+    """Script-free policy for a self-contained page: the only allowed style is the inline block with this exact hash."""
+    digest = base64.b64encode(hashlib.sha256(css.encode()).digest()).decode()
+    return f"default-src 'none'; style-src 'sha256-{digest}'; base-uri 'none'; form-action 'none'"
+
+
 def export_html(tasks) -> str:
     """One self-contained page: no scripts, no network, style pinned by hash."""
     css = _EXPORT_CSS + VIZ_CSS
-    digest = base64.b64encode(hashlib.sha256(css.encode()).digest()).decode()
-    csp = f"default-src 'none'; style-src 'sha256-{digest}'; base-uri 'none'; form-action 'none'"
+    csp = csp_for(css)
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     cards = []
     folder = tasks.ws.path(".context/relay/tasks")

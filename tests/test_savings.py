@@ -1,8 +1,10 @@
 """Phase 2 additions that reduce what a person or assistant must read. Synthetic fixtures only."""
 from contextlib import redirect_stdout, redirect_stderr
+import base64
 import hashlib
 import io
 import json
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -264,6 +266,164 @@ class SubmitSnapshot(Project):
         code, _, _ = self.submit("--snapshot", outputs=("work/link.md",))
         self.assertEqual(code, 2)
         self.assertFalse((self.root / "deliverables").exists())
+
+
+SECRET_SOURCE = "CONFIDENTIAL-SOURCE-BODY-9f3a"
+SECRET_RESULT = "CONFIDENTIAL-RESULT-BODY-77c1"
+
+
+class DeliveryCard(Project):
+    def setUp(self):
+        super().setUp()
+        self.write("policy.md", f"# Current\n149 MXN monthly. {SECRET_SOURCE}\n# History\nold\n")
+        self.write("work/report.md", f"Report. {SECRET_RESULT}\n")
+        self.write("work/evidence.md", "Evidence file.\n")
+        self.tasks.start("t1", "Draft the FAQ | with <b>markup</b>", ["Cites policy", "Unknowns stay explicit"],
+                         ["policy.md#Current"], owner="ana", reviewer="luis")
+
+    def contents(self):
+        return {p.relative_to(self.root / ".context").as_posix(): p.read_bytes()
+                for p in sorted((self.root / ".context").rglob("*")) if p.is_file()}
+
+    def submit(self, *extra):
+        return self.cli("submit", "t1", "--output", "work/report.md", "--evidence", "work/evidence.md",
+                        "--checks", "Read the policy.\n\n# Not a heading\nCompared prices.", "--questions", "Is 149 final?",
+                        "--next", "Review please", *extra)
+
+    def accept(self):
+        sid = self.tasks.load("t1")["submission"]["submission_id"]
+        return self.cli("review", "t1", "--submission", sid, "--decision", "accept", "--actor", "luis",
+                        "--note", "Looks right", "--external-ref", "TICKET-42")
+
+    def test_card_is_read_only_and_leaves_every_file_byte_identical(self):
+        self.submit()
+        before = self.contents()
+        for args in (("card", "t1"), ("card", "t1", "--format", "html")):
+            code, out, err = self.cli(*args)
+            self.assertEqual(code, 0, err)
+            self.assertTrue(out.strip())
+        self.assertEqual(self.contents(), before)
+        self.assertFalse((self.root / "deliverables").exists())
+
+    def test_card_has_no_local_paths_or_operator_commands(self):
+        self.submit()
+        for fmt in ("md", "html"):
+            _, out, _ = self.cli("card", "t1", "--format", fmt)
+            self.assertNotIn(str(self.root), out)
+            self.assertNotIn("relay --root", out)
+
+    def test_line_start_markup_in_user_text_is_neutralised(self):
+        from okf_icm.card import _md, _quote
+        for raw in ("# H", "- item", "+ item", "1. one", "2) two", "=== ", "~~~", "> quote", "```", "* x"):
+            self.assertNotRegex(_md(raw), r"^(#|[-+=~>`*]|\d+[.)])", raw)
+        self.assertEqual(_quote("a\n\n  # b\n    code").splitlines(), ["> a", ">", "> \\# b", "> code"])
+
+    def test_card_before_submission_says_nothing_was_returned(self):
+        code, out, _ = self.cli("card", "t1")
+        self.assertEqual(code, 0)
+        self.assertIn("Nothing has been returned", out)
+        self.assertIn("Not accepted", out)
+        self.assertIn("Submission: none", out)
+
+    def test_markdown_has_the_fields_and_keeps_the_three_states_separate(self):
+        self.submit("--snapshot")
+        self.accept()
+        _, out, _ = self.cli("card", "t1")
+        packet_id = self.tasks.status("t1")["packet_id"]
+        submission_id = self.tasks.load("t1")["submission"]["submission_id"]
+        for expected in ("Cites policy", "Unknowns stay explicit", "ana", "luis", "policy.md", "Current", "revision 3",
+                         packet_id, submission_id, "Read the policy.", "Is 149 final?", "Review please", "TICKET-42",
+                         "recorded, not verified", "self-recorded", "copy of `work/report.md`"):
+            self.assertIn(expected, out)
+        self.assertIn("**Selected sources:** Current", out)
+        self.assertIn("**Work returned:** Returned for this version", out)
+        self.assertIn("**Acceptance:** Accepted by luis (self-recorded)", out)
+        digest = hashlib.sha256((self.root / "policy.md").read_bytes()).hexdigest()
+        self.assertIn(digest[:12], out)
+        self.assertNotIn(digest, out)
+
+    def test_no_source_or_deliverable_contents_in_either_format(self):
+        self.submit()
+        for fmt in ("md", "html"):
+            _, out, _ = self.cli("card", "t1", "--format", fmt)
+            self.assertNotIn(SECRET_SOURCE, out)
+            self.assertNotIn(SECRET_RESULT, out)
+            self.assertNotIn("Evidence file.", out)
+
+    def test_user_text_cannot_inject_markup_into_markdown(self):
+        self.submit()
+        _, out, _ = self.cli("card", "t1")
+        self.assertNotIn("<b>", out)
+        self.assertIn("\\<b\\>markup\\</b\\>", out)
+        self.assertIn("> \\# Not a heading", out)
+        self.assertNotRegex(out, r"(?m)^> #")
+
+    def test_html_has_no_script_pins_style_by_hash_and_escapes_text(self):
+        self.submit()
+        _, out, _ = self.cli("card", "t1", "--format", "html")
+        self.assertNotIn("<script", out.lower())
+        self.assertNotRegex(out, r"(?i)\son[a-z]+=")
+        self.assertNotIn(" style=", out)
+        self.assertNotIn("<b>markup</b>", out)
+        self.assertIn("&lt;b&gt;markup&lt;/b&gt;", out)
+        csp = re.search(r'http-equiv="Content-Security-Policy" content="([^"]+)"', out).group(1)
+        self.assertIn("default-src &#x27;none&#x27;", csp)
+        css = re.search(r"<style>(.*?)</style>", out, re.S).group(1)
+        expected = base64.b64encode(hashlib.sha256(css.encode()).digest()).decode()
+        self.assertIn(f"sha256-{expected}", csp)
+        self.assertNotIn("http://", out)
+        self.assertNotIn("https://", out)
+
+    def test_changed_source_and_changed_acceptance_are_reported_separately(self):
+        self.submit()
+        self.accept()
+        self.write("policy.md", "# Current\n159 MXN monthly.\n# History\nold\n")
+        _, out, _ = self.cli("card", "t1")
+        self.assertIn("**Selected sources:** Changed since selected: policy.md", out)
+        self.assertIn("**Work returned:** Returned for this version", out)
+        self.assertIn("Earlier acceptance no longer applies", out)
+        self.assertIn("**changed**", out)
+
+    def test_changes_requested_is_not_shown_as_accepted(self):
+        self.submit()
+        sid = self.tasks.load("t1")["submission"]["submission_id"]
+        self.cli("review", "t1", "--submission", sid, "--decision", "request_changes", "--actor", "luis", "--note", "Fix the price")
+        _, out, _ = self.cli("card", "t1")
+        self.assertIn("**Acceptance:** Changes requested", out)
+        self.assertIn("Changes requested by luis", out)
+        self.assertNotIn("Accepted by", out)
+
+    def test_out_never_overwrites_and_is_refused_inside_context(self):
+        self.submit()
+        target = self.root / "card.md"
+        code, out, err = self.cli("card", "t1", "--out", str(target))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)["written"], str(target))
+        first = target.read_bytes()
+        code, _, err = self.cli("card", "t1", "--out", str(target))
+        self.assertEqual(code, 2)
+        self.assertEqual(target.read_bytes(), first)
+        before = self.contents()
+        code, _, err = self.cli("card", "t1", "--out", str(self.root / ".context" / "card.md"))
+        self.assertEqual(code, 2)
+        self.assertIn("outside .context", err)
+        self.assertEqual(self.contents(), before)
+        link = self.root / "link.md"
+        link.symlink_to(self.root / "elsewhere.md")
+        code, _, _ = self.cli("card", "t1", "--out", str(link))
+        self.assertEqual(code, 2)
+        self.assertFalse((self.root / "elsewhere.md").exists())
+
+    def test_unknown_task_and_corrupt_packet_fail_without_a_card(self):
+        code, out, err = self.cli("card", "missing")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        packet = next((self.root / ".context/relay/tasks/t1/packets").glob("*.json"))
+        packet.write_text(packet.read_text(encoding="utf-8").replace("Draft the FAQ", "Draft the faq"), encoding="utf-8")
+        code, out, err = self.cli("card", "t1")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("modified or corrupt", err)
 
 
 if __name__ == "__main__":

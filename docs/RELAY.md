@@ -28,6 +28,7 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `escalate ID`            | Explicitly increase effort to Investigative, with a reason and a one-escalation limit.                        |
 | `reassign ID`            | Change the owner and/or reviewer with a note. Owner and reviewer are part of the frozen packet brief, so this takes a new snapshot and clears the current submission and review; history is kept. Refused while inputs are changed or if nothing would change. |
 | `serve`                  | Serve the local forms and packet downloads on 127.0.0.1.                                                      |
+| `card ID [--format md\|html] [--out FILE]` | Read-only delivery card for someone who will not open Relay; see [Delivery card](#delivery-card). |
 | `export-html --out FILE` | Write a self-contained, script-free snapshot of the knowledge map and every task's history. Never overwrites. |
 
 `start`, `submit`, `refresh`, `escalate` and `reassign` accept an optional `--actor NAME`, stored on the event only when given (at most 80 characters, no control characters). It is a self-recorded label for the history, like the reviewer name: it is not authentication and is never required. Events written before it existed load and display unchanged.
@@ -134,6 +135,16 @@ The optional library-level `review_required=False` skips the pending-human-revie
 - Trust and freshness are the bundle's own recorded signals. A view is not verification or approval.
 - The snapshot contains goals, acceptance state, owners, reviewers, timestamps and event kinds. It omits source, packet, deliverable and free-text note contents. It is a point-in-time copy; treat it as project data and keep it out of public history. Its own style is pinned by hash in a `Content-Security-Policy` meta tag.
 - A task that cannot be read (for example a modified packet) appears in the snapshot as an error, not silently omitted.
+
+## Delivery card
+
+`relay card ID` prints a one-page summary of a task to stdout; `--format html` writes the same content as a self-contained, script-free page (style pinned by hash in a `Content-Security-Policy` meta tag, no external assets), and `--out FILE` writes a new file instead of printing. It never overwrites a file and refuses a path inside `.context`.
+
+It is read-only: it changes no task state, takes no lock, and leaves every file under `.context` byte-identical. It shows the goal and acceptance criteria; owner and reviewer (self-recorded); each selected source with its section, role, first 12 hex characters of its hash, and the packet's snapshot date, marking any source that changed since; the outputs and evidence files with their short hashes (and the original path when `submit --snapshot` made copies); the checks, open questions and next action as the submitter reported them; the review decision, its note, and any `--external-ref` (recorded, not verified); revision; and the full `packet_id` and `submission_id`. The three states stay separate: whether the sources are current, whether work was returned, and whether it was accepted.
+
+It does not include source, packet or deliverable contents, and it omits the operator's next-step commands, so it carries no local paths. It does include free text that people wrote into Relay: goal, criteria, checks, open questions and the review note. Unlike the `export-html` snapshot, which omits notes, the card's purpose is to show them, so read it before sharing it outside the project. In Markdown, that text is escaped so it cannot start headings, lists or links of its own.
+
+Nothing on the card is verified: names are self-recorded, checks are as reported, and a hash shows which bytes were recorded, not that they are correct. The card describes one moment (it states when it was generated); it is not a live view and not an approval.
 
 ## Concurrency and local HTTP
 

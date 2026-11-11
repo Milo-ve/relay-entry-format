@@ -93,6 +93,10 @@ def parser():
     review.add_argument("--note", required=True)
     review.add_argument("--external-ref", help="Optional pointer to an approval kept elsewhere; recorded text, never fetched or verified")
     review.add_argument("--expected-revision", type=int)
+    card = sub.add_parser("card", help="Read-only delivery card: what was asked, what was used, what was returned, and what is accepted")
+    card.add_argument("task")
+    card.add_argument("--format", choices=("md", "html"), default="md")
+    card.add_argument("--out", type=Path, help="New file outside .context; an existing file is never overwritten. Default: print to stdout")
     export = sub.add_parser("export-html", help="Write a self-contained, script-free snapshot of tasks and the knowledge map")
     export.add_argument("--out", type=Path, required=True, help="New file; an existing file is never overwritten")
     serve = sub.add_parser("serve", help="Open a loopback-only local interface; no organizational authentication")
@@ -148,6 +152,17 @@ def main(argv=None):
                     result = tasks.brief(result)
             elif args.command == "show":
                 result = tasks.status(args.task)
+            elif args.command == "card":
+                from .card import render
+                text = render(tasks, args.task, args.format)
+                if not args.out:
+                    print(text, end="")
+                    return 0
+                if args.out.resolve().is_relative_to(tasks.ws.home):
+                    raise ContextError("Write the card outside .context, which holds project controls and task state.")
+                atomic_write(args.out, text, exclusive=True)
+                result = {"written": str(args.out), "format": args.format,
+                          "note": "Names are self-recorded and checks are as reported; no source or deliverable contents are included."}
             elif args.command == "context":
                 text = tasks.context(args.task)
                 hint = guidance.after_context(args.task, guidance.command_prefix(tasks.root))
