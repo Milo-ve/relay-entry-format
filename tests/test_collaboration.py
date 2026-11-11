@@ -151,5 +151,54 @@ class ReassignCase(Base):
         self.assertEqual(self.cli("reassign", "t", "--note", "n")[0], 2)
 
 
+class ExternalRefCase(Base):
+    def submitted(self):
+        self.start()
+        return self.submit()["submission"]["submission_id"]
+
+    def test_absent_by_default_and_identity_assurance_is_unchanged(self):
+        sid = self.submitted()
+        review = self.tasks.review("t", sid, "accept", "bea", "Ok")["review"]
+        self.assertNotIn("external_ref", review)
+        self.assertNotIn("external_ref_assurance", review)
+        self.assertEqual(review["identity_assurance"], "self-recorded-local-assertion")
+
+    def test_reference_is_stored_and_marked_not_verified(self):
+        sid = self.submitted()
+        review = self.tasks.review("t", sid, "accept", "bea", "Ok", external_ref="TICKET-42 https://example.invalid/a")["review"]
+        self.assertEqual(review["external_ref"], "TICKET-42 https://example.invalid/a")
+        self.assertEqual(review["external_ref_assurance"], "recorded-not-verified")
+        self.assertEqual(review["identity_assurance"], "self-recorded-local-assertion")
+        self.assertEqual(self.events()[-1]["review"]["external_ref"], review["external_ref"])
+
+    def test_it_is_displayed_as_recorded_not_verified(self):
+        sid = self.submitted()
+        self.tasks.review("t", sid, "accept", "bea", "Ok", external_ref="TICKET-42")
+        self.assertIn("TICKET-42 (recorded, not verified)", timeline_model(self.tasks, "t")["events"][-1]["label"])
+        self.assertIn("TICKET-42 (recorded, not verified)", self.tasks.status("t")["next_step"])
+
+    def test_invalid_references_are_refused_and_no_review_is_written(self):
+        sid = self.submitted()
+        for bad in ("", "  ", "x" * 201, "a\nb", "a\x1bb"):
+            with self.assertRaises(ContextError, msg=repr(bad)):
+                self.tasks.review("t", sid, "accept", "bea", "Ok", external_ref=bad)
+        self.assertIsNone(self.tasks.load("t")["review"])
+
+    def test_it_is_never_fetched(self):
+        from unittest.mock import patch
+        sid = self.submitted()
+        with patch("urllib.request.urlopen") as opened, patch("socket.create_connection") as connected:
+            self.tasks.review("t", sid, "accept", "bea", "Ok", external_ref="https://example.invalid/approval")
+        opened.assert_not_called()
+        connected.assert_not_called()
+
+    def test_cli_option(self):
+        sid = self.submitted()
+        code, out, _ = self.cli("review", "t", "--submission", sid, "--decision", "accept", "--actor", "bea",
+                                "--note", "Ok", "--external-ref", "MSG-7")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["review"]["external_ref"], "MSG-7")
+
+
 if __name__ == "__main__":
     unittest.main()

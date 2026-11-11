@@ -36,6 +36,16 @@ def _actor(value) -> str | None:
     return value
 
 
+def _external_ref(value) -> str | None:
+    """A pointer to an approval kept elsewhere (ticket, message, link). Recorded text only: never fetched or checked."""
+    if value is None:
+        return None
+    value = _nonempty(value, "External reference")
+    if len(value) > 200 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ContextError("External reference must be at most 200 characters, without control characters.")
+    return value
+
+
 def _who(actor: str | None) -> dict:
     return {"actor": actor} if actor else {}
 
@@ -309,9 +319,10 @@ class Tasks:
         self.save(state, "submit", submission_id=submission["submission_id"], **_who(actor))
         return self.status(task)
 
-    def review(self, task, submission_id, decision, actor, note, expected=None):
+    def review(self, task, submission_id, decision, actor, note, expected=None, external_ref=None):
         state = self.load(task)
         self.check_revision(state, expected)
+        external_ref = _external_ref(external_ref)
         submission = state["submission"]
         if decision not in {"accept", "request_changes"} or not submission or submission["submission_id"] != submission_id:
             raise ContextError("Review must identify the current submission and a valid decision.")
@@ -322,5 +333,7 @@ class Tasks:
         state["review"] = {"decision": decision, "actor": _nonempty(actor, "Reviewer"), "note": _nonempty(note, "Review note"),
                            "submission_id": submission_id, "packet_id": state["packet_id"], "at": now(),
                            "identity_assurance": "self-recorded-local-assertion"}
+        if external_ref:
+            state["review"].update(external_ref=external_ref, external_ref_assurance="recorded-not-verified")
         self.save(state, "review", decision=decision, submission_id=submission_id, review=state["review"])
         return self.status(task)

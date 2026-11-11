@@ -83,6 +83,7 @@ def parser():
     review.add_argument("--decision", choices=("accept", "request_changes"), required=True)
     review.add_argument("--actor", required=True)
     review.add_argument("--note", required=True)
+    review.add_argument("--external-ref", help="Optional pointer to an approval kept elsewhere; recorded text, never fetched or verified")
     review.add_argument("--expected-revision", type=int)
     export = sub.add_parser("export-html", help="Write a self-contained, script-free snapshot of tasks and the knowledge map")
     export.add_argument("--out", type=Path, required=True, help="New file; an existing file is never overwritten")
@@ -164,7 +165,8 @@ def main(argv=None):
                         result = tasks.submit(args.task, args.output, args.evidence, args.checks, args.questions,
                                               args.next, args.expected_revision, args.actor)
                     elif args.command == "review":
-                        result = tasks.review(args.task, args.submission, args.decision, args.actor, args.note, args.expected_revision)
+                        result = tasks.review(args.task, args.submission, args.decision, args.actor, args.note, args.expected_revision,
+                                              external_ref=args.external_ref)
                     else:
                         raise ContextError("Unknown operation.")
         print(json_text(result), end="")

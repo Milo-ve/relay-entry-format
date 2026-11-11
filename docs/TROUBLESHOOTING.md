@@ -73,6 +73,9 @@ The `--submission` value is not the current `submission_id`, for example after a
 
 Once a version is accepted, editing its result, its evidence or a source returns the task to `needs_review`, and the earlier acceptance no longer applies to what is on disk.
 
+**`External reference must be at most 200 characters, without control characters.`**
+`--external-ref` is a short pointer, such as a ticket ID or link. Relay stores the text; it does not open it or check that it exists.
+
 ### Why can't I refresh or escalate?
 
 **`Escalation unavailable. Reassess scope or resolve the missing prerequisite.`**

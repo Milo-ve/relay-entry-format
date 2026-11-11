@@ -100,5 +100,18 @@ class WebCase(unittest.TestCase):
         self.assertNotIn("actor", events[-2])
         self.assertEqual(events[-1]["actor"], "ana")
 
+    def test_review_form_offers_an_optional_reference(self):
+        html = self.start()
+        data = {"csrf": self.token(html), "revision": "1", "result": "149 MXN", "evidence": "Compared", "checks": "Compared", "next": "Review"}
+        self.assertEqual(self.request("POST", "/submit/faq", data)[0], 303)
+        status = self.tasks.status("faq")
+        html = self.request("GET", "/tasks/faq")[2]
+        self.assertIn('name="external_ref"', html)
+        data = {"csrf": self.token(html), "revision": str(status["revision"]), "submission": status["submission"]["submission_id"],
+                "actor": "milo", "decision": "accept", "note": "Ok", "external_ref": " TICKET-9 "}
+        self.assertEqual(self.request("POST", "/review/faq", data)[0], 303)
+        self.assertEqual(self.tasks.status("faq")["review"]["external_ref"], "TICKET-9")
+        self.assertIn("TICKET-9 (recorded, not verified)", self.request("GET", "/tasks/faq")[2])
+
 if __name__ == "__main__":
     unittest.main()

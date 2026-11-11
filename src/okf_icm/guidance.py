@@ -60,7 +60,8 @@ def next_step(status: dict, relay: str = "relay") -> str:
                 f"and {_submit(relay, task)} again.")
     if state == "accepted":
         review = status["review"]
-        return (f"Accepted by {review['actor']} (self-recorded) for submission {review['submission_id'][:12]}. "
+        reference = f" Reference: {review['external_ref']} (recorded, not verified)." if review.get("external_ref") else ""
+        return (f"Accepted by {review['actor']} (self-recorded) for submission {review['submission_id'][:12]}.{reference} "
                 "The acceptance covers only this version: if a source, the result or the evidence changes, the task returns to needs_review. "
                 "Folding the result into a canonical source is a separate step that Relay does not perform.")
     if state == "submitted":

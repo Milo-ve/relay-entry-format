@@ -184,7 +184,7 @@ def timeline_model(tasks, task: str) -> dict:
             kind = "accept" if decision == "accept" else "changes"
             actor = (event.get("review") or {}).get("actor")
             if actor:
-                label += f" · {actor} (self-recorded)"
+                label += f" · {actor} (self-recorded)" + _ref(event.get("review") or {})
         if action == "start" and event.get("profile"):
             label += f" · {event['profile']} effort"
         if action == "reassign" and event.get("current"):
@@ -195,13 +195,17 @@ def timeline_model(tasks, task: str) -> dict:
     return {"id": task, "goal": status["goal"], "status": status, "events": rows, "packets": len(state["packets"])}
 
 
+def _ref(review: dict) -> str:
+    return f" · reference: {review['external_ref']} (recorded, not verified)" if review.get("external_ref") else ""
+
+
 def strip(model: dict) -> str:
     s = model["status"]
     sources = "Current" if not s["changed"] else "Changed since selected: " + ", ".join(s["changed"])
     work = "Returned for this version" if s["submission"] else "Not returned yet"
     review = s["review"]
     if review and review["decision"] == "accept":
-        accepted = "Accepted by " + review["actor"] + " (self-recorded)" if not s["changed"] else "Earlier acceptance no longer applies: inputs changed"
+        accepted = "Accepted by " + review["actor"] + " (self-recorded)" + _ref(review) if not s["changed"] else "Earlier acceptance no longer applies: inputs changed"
     elif review:
         accepted = "Changes requested"
     elif s["blockers"]:
