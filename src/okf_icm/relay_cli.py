@@ -21,6 +21,17 @@ def parser():
     init = sub.add_parser("init", help="Initialize a project without overwriting existing state")
     init.add_argument("path", type=Path, nargs="?")
     init.add_argument("--name", default="Relay project")
+    skill = sub.add_parser("skill", help="Install or export a bundled skill without overwriting")
+    from .skill_distribution import SKILLS
+    skill.add_argument("--name", choices=SKILLS, default="relay-workspace")
+    destination = skill.add_mutually_exclusive_group(required=True)
+    destination.add_argument("--to", type=Path, help="Assistant skills directory")
+    destination.add_argument("--zip", type=Path, help="New ZIP containing the complete skill folder")
+    destination.add_argument("--manual", type=Path, help="New standalone manual handoff guide (--name ref)")
+    setup = sub.add_parser("workspace", help="Preview workspace adaptation; --apply backs up before writing")
+    setup.add_argument("--apply", action="store_true")
+    setup.add_argument("--name", default="Relay project")
+    setup.add_argument("--claude", action="store_true", help="Also back up and append a CLAUDE.md import of AGENTS.md")
     start = sub.add_parser("start", help="Create a task, choose effort, and snapshot selected inputs")
     start.add_argument("task")
     start.add_argument("--goal", required=True)
@@ -94,6 +105,13 @@ def main(argv=None):
     try:
         if args.command == "init":
             result = initialize(args.path or args.root, args.name)
+        elif args.command == "skill":
+            from .skill_distribution import export_skill, install_skill
+            result = (install_skill(args.to, args.name) if args.to else
+                      export_skill(args.manual or args.zip, args.name, manual=args.manual is not None))
+        elif args.command == "workspace":
+            from .onboarding import adapt_workspace
+            result = adapt_workspace(args.root, args.name, apply=args.apply, claude=args.claude)
         else:
             tasks = Tasks(args.root)
             if args.command == "serve":

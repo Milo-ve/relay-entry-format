@@ -17,3 +17,6 @@ relay = "okf_icm.relay_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+okf_icm = ["skills/*/SKILL.md", "skills/*/references/*.md", "skills/*/assets/*.md"]
