@@ -1,0 +1,160 @@
+{
+  "frozen": "Written before the knowledge base content existed and before any baseline or navigation was run. Do not edit expected sets after this file is committed; a knowledge base that disagrees with them is the thing to fix.",
+  "company": "Fernwood Metrics (fictional, synthetic). No real organization, price, person or policy.",
+  "author_note": "One author wrote both these expected sets and the knowledge base. Expected sets are judgment calls about what a careful person would select; they have not been reviewed by a second person.",
+  "id_format": "A concept id is its bundle-relative path without .md. 'id#slug' means only that section (slug = lowercase heading, spaces to hyphens) is needed; the other sections of that file are not.",
+  "metrics": {
+    "unit": "Concept level. A returned 'id#slug' counts as a hit for 'id'. Sections are reported separately.",
+    "precision": "|returned ∩ expected| / |returned|. A goal that returns nothing scores 0.",
+    "recall": "|returned ∩ expected| / |expected|.",
+    "aggregate": "Macro mean over goals that are not gaps. Gap goals are reported separately: how many concepts a method returned for them, and whether it said there is a gap.",
+    "characters": "Characters (Python len) of the text actually loaded: the whole file for a concept, the section text for 'id#slug'.",
+    "hazard": "A returned concept is a hazard when status != stable, or freshness == stale, or trust == unverified: the same condition knowledge.inspect_bundle uses to warn. A hazard is 'silent' when the method gave no flag for it.",
+    "universe": "The permitted universe is every concept that parses, validates, is readable and is not matched by deny_paths. Select-everything means that whole universe."
+  },
+  "baselines": {
+    "select_everything": "Every concept in the permitted universe, whole files.",
+    "keyword": {
+      "keywords": "re.findall('[a-z0-9]+', goal.lower()), keeping tokens with at least 4 characters that are not in stopwords. No stemming, no synonyms.",
+      "match": "A keyword matches a concept when it occurs as a substring of the concept's full file text, lowercased (title, tags, description and body), as grep -i would.",
+      "score": "Number of distinct keywords that match.",
+      "keyword_any": "Every concept with score >= 1, whole files.",
+      "keyword_top5": "The 5 highest scores (ties by id ascending), score >= 1, whole files."
+    },
+    "stopwords": ["about", "after", "also", "been", "before", "being", "cannot", "could", "customer", "customers", "does", "each", "from", "have", "into", "just", "later", "make", "many", "more", "most", "must", "need", "only", "other", "over", "should", "some", "such", "than", "that", "their", "them", "then", "there", "these", "they", "this", "through", "what", "when", "where", "which", "while", "will", "with", "would", "your", "first", "write", "explain", "check", "decide", "prepare", "produce", "handle", "respond", "answer", "summarize"]
+  },
+  "acceptance_for_a_navigator": {
+    "declared_before_any_navigator_exists": true,
+    "must_all_hold": [
+      "On non-gap goals, mean recall >= keyword_top5 mean recall.",
+      "On non-gap goals, mean precision > keyword_top5 mean precision.",
+      "Mean characters loaded per goal < select_everything characters.",
+      "Zero silent hazards: every deprecated, draft, stale or unverified concept that is returned carries an explicit flag, and the goals listed in must_warn return the concept with that flag rather than dropping it.",
+      "Every gap goal returns an explicit gap and no guessed source.",
+      "No denied or sensitive path appears anywhere in the output, even as a name in a 'left out' list.",
+      "Identical input and workspace give byte-identical output."
+    ],
+    "if_not_met": "Report it and stop. Do not change the fixtures or the expected sets."
+  },
+  "goals": [
+    {
+      "id": "g01-refund-after-window",
+      "goal": "Answer a customer who asks for a refund 20 days after buying a monthly Team plan.",
+      "expected": ["policies/refund-policy#refund-window"],
+      "why": "The current window decides it. The 2023 policy, the summary and the support macros are older or derived."
+    },
+    {
+      "id": "g02-refund-annual-enterprise",
+      "goal": "Process a refund for an annual Enterprise customer who cancelled after 10 days.",
+      "expected": ["policies/refund-policy#annual-plans", "processes/refund-handling#approval", "processes/invoicing#credit-notes"],
+      "why": "Annual rule, who approves, and how the money is returned."
+    },
+    {
+      "id": "g03-retention-customer-explanation",
+      "goal": "Draft the customer-facing explanation of how long we keep data after an account is deleted.",
+      "expected": ["policies/data-retention", "processes/account-offboarding#deletion"],
+      "why": "The policy is authoritative. The draft FAQ and the stale privacy notice give other numbers."
+    },
+    {
+      "id": "g04-offboarding-checklist",
+      "goal": "Prepare the offboarding checklist for a departing customer, including their data export and last invoice.",
+      "expected": ["processes/account-offboarding", "products/data-export", "policies/data-retention"],
+      "why": "The process, what can be exported, and when data disappears."
+    },
+    {
+      "id": "g05-outage-response-time",
+      "goal": "What response time do we promise a Team plan customer reporting a production outage?",
+      "expected": ["policies/support-sla#response-targets-by-plan", "glossary/severity-levels"],
+      "why": "The target depends on severity, and 'production outage' is a severity definition."
+    },
+    {
+      "id": "g06-sso-enterprise",
+      "goal": "Set up single sign-on for a new Enterprise customer.",
+      "expected": ["products/sso-setup", "products/plan-tiers"],
+      "why": "The setup guide, and confirmation of which plan includes it."
+    },
+    {
+      "id": "g07-pricing-page",
+      "goal": "Write the pricing section of the public pricing page.",
+      "expected": ["products/pricing-current", "products/plan-tiers", "policies/discounts#annual-discount"],
+      "why": "Current prices, what each plan is, and the annual offer. The 2024 prices are deprecated."
+    },
+    {
+      "id": "g08-security-notification",
+      "goal": "A security incident is suspected: who must be notified and by when?",
+      "expected": ["policies/security-incident-policy#notification-deadlines", "processes/incident-response#communicate"],
+      "why": "The deadlines and the communication step. The stale privacy notice has older numbers."
+    },
+    {
+      "id": "g09-api-rate-limits",
+      "goal": "Explain our API rate limits and what happens on the Starter plan when they are exceeded.",
+      "expected": ["products/usage-limits#api-limits", "products/api-overview#rate-limits"],
+      "why": "The numbers per plan, and the behaviour on excess."
+    },
+    {
+      "id": "g10-scheduled-export",
+      "goal": "Can a Team customer export their data on a schedule, and in which formats?",
+      "expected": ["products/data-export"],
+      "why": "One concept answers it. The older limits note is stale and unverified."
+    },
+    {
+      "id": "g11-chargeback",
+      "goal": "Decide how to handle a chargeback dispute raised through a customer's bank.",
+      "expected": [],
+      "gap": true,
+      "why": "No concept covers chargebacks. The refund policy links to a chargeback policy that does not exist. The honest answer is a gap, not a nearby refund page presented as the answer."
+    },
+    {
+      "id": "g12-salary-bands",
+      "goal": "Summarize what employees in each salary band can expect.",
+      "expected": [],
+      "gap": true,
+      "denied": true,
+      "why": "The only concepts about this are under a denied path. Nothing may be returned and no denied path or title may appear in the output."
+    },
+    {
+      "id": "g13-onboard-team-customer",
+      "goal": "Onboard a new Team plan customer: what do we do in their first two weeks, and what can they do on their plan?",
+      "expected": ["processes/customer-onboarding", "products/plan-tiers"],
+      "why": "The current process and the plan comparison. The v1 onboarding process is deprecated."
+    },
+    {
+      "id": "g14-why-shorter-retention",
+      "goal": "Why did we shorten the retention period, and what does the policy now say?",
+      "expected": ["decisions/adr-002-retention-30-days", "policies/data-retention"],
+      "why": "The decision record and the current policy."
+    },
+    {
+      "id": "g15-nonprofit-discount",
+      "goal": "Which organizations get the nonprofit discount, and who approves it?",
+      "expected": ["policies/discounts#nonprofit"],
+      "why": "One section answers eligibility and approval."
+    },
+    {
+      "id": "g16-stage-refund-email",
+      "goal": "Produce the updated customer-facing refund email template.",
+      "stage": "04-produce",
+      "expected": ["policies/refund-policy#refund-window", "references/support-macros#refund-macros"],
+      "why": "The 04-produce stage contract of this project names both as its inputs. The goal alone would not justify the macros, because they paraphrase the policy; the project's own contract does."
+    },
+    {
+      "id": "g17-identity-provider-login",
+      "goal": "A customer cannot log in through their company identity provider. What should support look at first?",
+      "expected": ["products/sso-setup#troubleshooting"],
+      "why": "The guide's troubleshooting section. The words 'identity provider' and 'log in' are tags, not necessarily body text."
+    },
+    {
+      "id": "g18-processor-contact",
+      "goal": "Who is our contact at the payment processor for a failed payout?",
+      "expected": ["references/vendor-contacts"],
+      "must_warn": ["references/vendor-contacts"],
+      "why": "It is the only source and it is stale. It must be returned with a staleness flag, not dropped and not presented as current."
+    },
+    {
+      "id": "g19-annual-discount-and-refunds",
+      "goal": "Explain how the annual discount interacts with refunds for annual customers.",
+      "expected": ["policies/discounts#annual-discount", "policies/refund-policy#annual-plans", "decisions/adr-001-annual-billing"],
+      "why": "The discount, the refund rule for annual plans, and the decision that links them."
+    }
+  ]
+}
