@@ -14,7 +14,7 @@ Open the task → Understand its boundaries → Continue with your assistant →
 
 > Use the least total effort that satisfies the task's requirements, and increase effort when evidence shows it is needed.
 
-**Status: local prototype 0.3.0.** Single user, loopback only, no authentication. See [What is and is not established](#what-is-and-is-not-established).
+**Status: local prototype 0.4.0.** Single user, loopback only, no authentication. See [What is and is not established](#what-is-and-is-not-established).
 
 ---
 
