@@ -7,8 +7,8 @@ import json
 import secrets
 from urllib.parse import parse_qs, urlparse
 
+from . import i18n
 from .storage import ContextError, atomic_write, identifier, json_text
-from .tasks import EXPERIENCE, PRINCIPLE
 from .viz import VIZ_CSS, bundle_section, timeline_section
 
 CSS = """
@@ -45,11 +45,21 @@ def handler(tasks):
     nonce = secrets.token_urlsafe(18)
 
     class Handler(BaseHTTPRequestHandler):
+        lang = "en"
+
         def log_message(self, fmt, *args):
             pass  # Do not log task contents or token-bearing form data.
 
         def host(self):
             return f"127.0.0.1:{self.server.server_port}"
+
+        def choose_language(self):
+            """Read the `language` setting for this request. A broken settings file is reported by the page itself, in English."""
+            try:
+                self.lang = tasks.language()
+            except ContextError:
+                self.lang = "en"
+            self.t = i18n.translator(self.lang)
 
         def response(self, body, status=200, content_type="text/html; charset=utf-8", download=False):
             data = body.encode()
@@ -66,9 +76,11 @@ def handler(tasks):
             self.wfile.write(data)
 
         def page(self, title, content, status=200):
-            self.response(f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)} · Relay</title><style nonce="{nonce}">{CSS}</style></head>'
-                          f'<body><a class="skip" href="#main">Skip to content</a><header><a href="/">Relay Method<span class="muted"> / local workspace</span></a><nav><a href="/map">Knowledge map</a></nav><span class="tag">Portable context.<br>Proportional effort.</span></header><main id="main">{content}'
-                          '<footer>Local trusted-user prototype. Reviewer identities are self-recorded. Assistant compute settings are advisory. No organization authentication or remote sharing.</footer></main></body></html>', status)
+            t = self.t
+            self.response(f'<!doctype html><html lang="{self.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)} · Relay</title><style nonce="{nonce}">{CSS}</style></head>'
+                          f'<body><a class="skip" href="#main">{esc(t("web.skip"))}</a><header><a href="/">Relay Method<span class="muted">{esc(t("web.brand_suffix"))}</span></a><nav><a href="/map">{esc(t("web.nav_map"))}</a></nav>'
+                          f'<span class="tag">{esc(t("web.tag1"))}<br>{esc(t("web.tag2"))}</span></header><main id="main">{content}'
+                          f'<footer>{esc(t("web.footer"))}</footer></main></body></html>', status)
 
         def form(self, action, content, revision=None):
             hidden = f'<input type="hidden" name="csrf" value="{csrf}">'
@@ -76,48 +88,95 @@ def handler(tasks):
                 hidden += f'<input type="hidden" name="revision" value="{revision}">'
             return f'<form method="post" action="{action}">{hidden}{content}</form>'
 
+        def option(self, value, key):
+            return f'<option value="{value}">{esc(self.t(key))}</option>'
+
+        def home(self):
+            t, lang = self.t, self.lang
+            rows = "".join(f'<a class="card" href="/tasks/{esc(x["id"])}"><strong>{esc(x["goal"])}</strong><span class="badge">{esc(i18n.status_label(lang, x["status"]))}</span>'
+                           f'<span class="muted">{esc(i18n.effort(lang, x["route"]["profile"]))} · {esc(x["owner"])}</span></a>' for x in tasks.list())
+            kinds = "".join(self.option(v, "web.kind_" + v) for v in ("auto", "transform", "draft", "diagnose", "design"))
+            risks = "".join(self.option(v, "web.risk_" + v) for v in ("standard", "low", "high"))
+            create = (field("id", t("web.f_id"), "") + field("goal", t("web.f_goal"), textarea=True)
+                      + field("acceptance", t("web.f_acceptance"), textarea=True)
+                      + field("sources", t("web.f_sources"), textarea=True, required=False)
+                      + f'<p class="muted">{esc(t("web.sources_hint"))}</p>'
+                      + f'<label for="kind">{esc(t("web.f_kind"))}</label><select id="kind" name="kind">{kinds}</select>'
+                      + f'<label for="risk">{esc(t("web.f_risk"))}</label><select id="risk" name="risk">{risks}</select>'
+                      + field("owner", t("web.f_owner"), "local-operator") + field("reviewer", t("web.f_reviewer"), "local-reviewer")
+                      + f'<button type="submit">{esc(t("web.open_task"))}</button>')
+            empty = "<p>" + esc(t("web.no_tasks")) + "</p>"
+            self.page(t("web.home_title"),
+                      f'<p class="steps">{esc(t("web.steps"))}</p><h1>{esc(t("web.home_h1"))}</h1><p class="intro">{esc(t("web.experience"))}</p>'
+                      f'<p class="intro">{esc(t("web.principle"))}</p><div class="grid"><section class="panel"><h2>{esc(t("web.home_title"))}</h2>{rows or empty}</section>'
+                      f'<section class="panel"><h2>{esc(t("web.start_h2"))}</h2>{self.form("/start", create)}</section></div>')
+
+        def task_page(self, task):
+            t, lang = self.t, self.lang
+            s = tasks.status(task)
+            rev = s["revision"]
+            source_items = "".join(f'<li>{esc(x["path"])} <span class="muted">({esc(x["role"])})</span></li>' for x in tasks.packet(tasks.load(task))["files"])
+            acceptance = "".join(f'<li>{esc(x)}</li>' for x in s["acceptance"])
+            changed = (f'<div class="error" role="alert">{t("web.changed_alert", paths=esc(", ".join(s["changed"])))}</div>') if s["changed"] else ""
+            submit = (field("result", t("web.f_result"), textarea=True) + field("evidence", t("web.f_evidence"), textarea=True)
+                      + field("checks", t("web.f_checks"), textarea=True) + field("questions", t("web.f_questions"), textarea=True, required=False)
+                      + field("next", t("web.f_next"), t("web.f_next_default")) + field("actor", t("web.f_actor"), required=False)
+                      + f'<button>{esc(t("web.b_return"))}</button>')
+            review = f'<p>{esc(t("web.review_first"))}</p>'
+            if s["submission"]:
+                review = self.form(f"/review/{task}", f'<input type="hidden" name="submission" value="{esc(s["submission"]["submission_id"])}">'
+                                   + field("actor", t("web.f_reviewer_actor"), s["reviewer"]) + field("external_ref", t("web.f_external_ref"), required=False)
+                                   + field("note", t("web.f_review_note"), textarea=True)
+                                   + f'<label for="decision">{esc(t("web.f_decision"))}</label><select name="decision" id="decision">{self.option("accept", "web.accept_option")}{self.option("request_changes", "web.changes_option")}</select>'
+                                   + f'<button>{esc(t("web.b_review"))}</button>', rev)
+            operations = self.form(f"/refresh/{task}", field("note", t("web.f_refresh_note"), textarea=True)
+                                   + f'<label><input type="checkbox" name="resolve" value="yes"> {esc(t("web.f_resolved"))}</label>'
+                                   + field("actor", t("web.f_actor"), required=False) + f'<button>{esc(t("web.b_refresh"))}</button>', rev)
+            escalation = self.form(f"/escalate/{task}", field("note", t("web.f_escalate_note"), textarea=True)
+                                   + field("actor", t("web.f_actor"), required=False) + f'<button>{esc(t("web.b_escalate"))}</button>', rev)
+            blockers = esc("; ".join(s["blockers"]) or t("web.no_blockers"))
+            record = esc(json_text({"submission": s["submission"], "review": s["review"]}))
+            people = t("web.people", owner=esc(s["owner"]), reviewer=esc(s["reviewer"]))
+            self.page(s["goal"],
+                      f'<a href="/">{esc(t("web.all_tasks"))}</a><h1>{esc(s["goal"])}</h1>{changed}'
+                      f'<span class="badge">{esc(i18n.status_label(lang, s["status"]))}</span><span class="badge">{esc(i18n.effort(lang, s["route"]["profile"]))}</span>'
+                      f'<span class="badge">{esc(t("web.sources_state", freshness=t("freshness." + s["freshness"])))}</span>'
+                      f'<div class="grid"><section class="panel"><h2>{esc(t("web.h_boundaries"))}</h2><p>{esc(s["boundaries"])}</p><p>{people}</p>'
+                      f'<h3>{esc(t("web.h_acceptance"))}</h3><ul>{acceptance}</ul><h3>{esc(t("web.h_sources"))}</h3><ul>{source_items}</ul>'
+                      f'<p>{t("web.blockers", blockers=blockers)}</p><a class="button" href="/packet/{task}">{esc(t("web.download"))}</a>'
+                      f'<details><summary>{esc(t("web.s_effort"))}</summary><pre>{esc(json_text(s["route"]))}</pre></details></section>'
+                      f'<section class="panel"><h2>{esc(t("web.h_return"))}</h2><p class="muted">{esc(t("web.return_hint"))}</p>{self.form(f"/submit/{task}", submit, rev)}</section>'
+                      f'<section class="panel"><h2>{esc(t("web.h_review"))}</h2>{review}<details><summary>{esc(t("web.s_record"))}</summary><pre>{record}</pre></details></section>'
+                      f'<section class="panel"><h2>{esc(t("web.h_adapt"))}</h2>{operations}<details><summary>{esc(t("web.s_more_effort"))}</summary>{escalation}</details></section>'
+                      f'<section class="panel wide"><h2>{esc(t("web.h_history"))}</h2>{timeline_section(tasks, task, lang)}</section></div>')
+
         def do_GET(self):
+            self.choose_language()
+            t = self.t
             if self.headers.get("Host") != self.host():
                 self.response("Invalid host", 403, "text/plain")
                 return
             try:
                 path = urlparse(self.path).path.strip("/")
                 if not path:
-                    rows = "".join(f'<a class="card" href="/tasks/{esc(t["id"])}"><strong>{esc(t["goal"])}</strong><span class="badge">{esc(t["status"])}</span><span class="muted">{esc(t["route"]["profile"])} effort · {esc(t["owner"])}</span></a>' for t in tasks.list())
-                    create = (field("id", "Task ID", "") + field("goal", "What should this task achieve?", textarea=True)
-                              + field("acceptance", "What will make the result acceptable? One criterion per line.", textarea=True)
-                              + field("sources", "Source paths, one per line", textarea=True, required=False)
-                              + '<p class="muted">Use paths relative to this project. Only selected sources and project controls enter the packet.</p>'
-                              + '<label for="kind">Kind of work</label><select id="kind" name="kind"><option value="auto">Let the rules assess it</option><option value="transform">Specified transformation</option><option value="draft">Draft or synthesis</option><option value="diagnose">Diagnosis</option><option value="design">Open-ended design</option></select>'
-                              + '<label for="risk">Consequences</label><select id="risk" name="risk"><option value="standard">Standard</option><option value="low">Low and reversible</option><option value="high">High / consequential</option></select>'
-                              + field("owner", "Task owner", "local-operator") + field("reviewer", "Reviewer", "local-reviewer")
-                              + '<button type="submit">Open task</button>')
-                    self.page("Your work", f'<p class="steps">OPEN → UNDERSTAND → CONTINUE → RETURN</p><h1>Pick up where work left off.</h1><p class="intro">{esc(EXPERIENCE)}</p><p class="intro">{esc(PRINCIPLE)}</p><div class="grid"><section class="panel"><h2>Your work</h2>{rows or "<p>No tasks yet. Open a task to prepare its first handoff.</p>"}</section><section class="panel"><h2>Start with an outcome</h2>{self.form("/start", create)}</section></div>')
+                    self.home()
                 elif path == "map":
-                    self.page("Knowledge map", f'<a href="/">← All tasks</a><h1>Knowledge map</h1><p class="intro">Concepts in <code>.context/knowledge</code> and the links between them. Trust and freshness are the bundle\'s own recorded signals; Relay does not verify them.</p><section class="panel">{bundle_section(tasks.ws)}</section>')
+                    intro = t("web.map_intro", code="<code>.context/knowledge</code>")
+                    self.page(t("web.map_title"), f'<a href="/">{esc(t("web.all_tasks"))}</a><h1>{esc(t("web.map_title"))}</h1><p class="intro">{intro}</p>'
+                                                  f'<section class="panel">{bundle_section(tasks.ws, self.lang)}</section>')
                 elif path.startswith("packet/"):
                     task = identifier(path.split("/", 1)[1])
                     self.response(tasks.context(task), content_type="text/markdown; charset=utf-8", download=True)
                 elif path.startswith("tasks/"):
-                    task = identifier(path.split("/", 1)[1])
-                    s = tasks.status(task)
-                    rev = s["revision"]
-                    source_items = "".join(f'<li>{esc(x["path"])} <span class="muted">({esc(x["role"])})</span></li>' for x in tasks.packet(tasks.load(task))["files"])
-                    acceptance = "".join(f'<li>{esc(x)}</li>' for x in s["acceptance"])
-                    changed = f'<div class="error" role="alert">Review needed: {esc(", ".join(s["changed"]))}. Refresh the context and reassess affected work.</div>' if s["changed"] else ""
-                    submit = field("result", "Your deliverable", textarea=True) + field("evidence", "Actual evidence / observed results", textarea=True) + field("checks", "What did you check?", textarea=True) + field("questions", "Open questions", textarea=True, required=False) + field("next", "Next action", "Review this submission against the acceptance criteria.") + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Return reviewable work</button>'
-                    review = '<p>Return a result before recording a review.</p>'
-                    if s["submission"]:
-                        review = self.form(f"/review/{task}", f'<input type="hidden" name="submission" value="{esc(s["submission"]["submission_id"])}">' + field("actor", "Reviewer (self-recorded)", s["reviewer"]) + field("external_ref", "Reference to an approval kept elsewhere (optional; recorded, not checked)", required=False) + field("note", "Review rationale", textarea=True) + '<label for="decision">Decision</label><select name="decision" id="decision"><option value="accept">Accept this version</option><option value="request_changes">Request changes</option></select><button>Record review</button>', rev)
-                    operations = self.form(f"/refresh/{task}", field("note", "What changed or was resolved?", textarea=True) + '<label><input type="checkbox" name="resolve" value="yes"> I resolved the listed prerequisites</label>' + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Refresh context</button>', rev)
-                    escalation = self.form(f"/escalate/{task}", field("note", "Evidence requiring more effort", textarea=True) + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Escalate effort</button>', rev)
-                    self.page(s["goal"], f'<a href="/">← All tasks</a><h1>{esc(s["goal"])}</h1>{changed}<span class="badge">{esc(s["status"])}</span><span class="badge">{esc(s["route"]["profile"])} effort</span><span class="badge">Sources: {esc(s["freshness"])}</span><div class="grid"><section class="panel"><h2>Understand the boundaries</h2><p>{esc(s["boundaries"])}</p><p>Owner: {esc(s["owner"])} · Reviewer: {esc(s["reviewer"])}</p><h3>Acceptance</h3><ul>{acceptance}</ul><h3>Selected sources</h3><ul>{source_items}</ul><p>Blockers: {esc("; ".join(s["blockers"]) or "None recorded")}</p><a class="button" href="/packet/{task}">Download assistant context</a><details><summary>Effort decision</summary><pre>{esc(json_text(s["route"]))}</pre></details></section><section class="panel"><h2>Return reviewable work</h2><p class="muted">The text below is saved as versioned result and evidence files. Describe checks you actually performed.</p>{self.form(f"/submit/{task}", submit, rev)}</section><section class="panel"><h2>Review this version</h2>{review}<details><summary>Submission and review record</summary><pre>{esc(json_text({"submission":s["submission"],"review":s["review"]}))}</pre></details></section><section class="panel"><h2>Adapt to new evidence</h2>{operations}<details><summary>Need more effort?</summary>{escalation}</details></section><section class="panel wide"><h2>History of this task</h2>{timeline_section(tasks, task)}</section></div>')
+                    self.task_page(identifier(path.split("/", 1)[1]))
                 else:
-                    self.page("Not found", '<h1>Page not found</h1><a href="/">Return to tasks</a>', 404)
+                    self.page(t("web.not_found"), f'<h1>{esc(t("web.not_found"))}</h1><a href="/">{esc(t("web.to_tasks"))}</a>', 404)
             except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:
-                self.page("Action unavailable", f'<h1>Action unavailable</h1><p class="error" role="alert">{esc(exc)}</p><a href="/">Return to tasks</a>', 400)
+                self.page(t("web.unavailable"), f'<h1>{esc(t("web.unavailable"))}</h1><p class="error" role="alert">{esc(exc)}</p><a href="/">{esc(t("web.to_tasks"))}</a>', 400)
 
         def do_POST(self):
+            self.choose_language()
+            t = self.t
             try:
                 if self.headers.get("Host") != self.host() or self.headers.get("Origin") not in {None, f"http://{self.host()}"}:
                     raise ContextError("Request origin not allowed.")
@@ -167,7 +226,7 @@ def handler(tasks):
                 self.send_header("Content-Length", "0")
                 self.end_headers()
             except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:
-                self.page("Could not save", f'<h1>Could not save this action</h1><p class="error" role="alert">{esc(exc)}</p><p>Go back to retain your form, or reload the task to use its current version.</p><a href="/">Return to tasks</a>', 400)
+                self.page(t("web.not_saved"), f'<h1>{esc(t("web.not_saved_h1"))}</h1><p class="error" role="alert">{esc(exc)}</p><p>{esc(t("web.not_saved_hint"))}</p><a href="/">{esc(t("web.to_tasks"))}</a>', 400)
 
     return Handler
 

@@ -172,8 +172,23 @@ Optional tool settings live in `.context/relay/settings.json`. Relay never creat
 | `lock_wait_seconds` | `5` | How long a writer waits for `write.lock`, 0 to 300. `0` fails at once. |
 | `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `reassign`, `submit` and `review` are refused without `--expected-revision`. |
 | `deny_paths` | `[]` | Names that may never be selected as a source, in task and stage packets. See below. |
+| `language` | `"en"` | `"en"` or `"es"`: the language of the people-facing views. See [Language](#language). |
 
 `deny_paths` patterns are matched case-insensitively against the spelled path and against the path it resolves to through links, and against every parent directory. A pattern without a slash matches any one path component (`secrets`, `*.pem`). A pattern with a slash matches the whole path or any parent directory of it (`finance/payroll*`); `*` also crosses slashes. The check runs before a file is read, so a refused `start` creates no task folder, and a `refresh` whose source became denied is refused with nothing changed. A packet taken before the rule is also refused at `context` export. Project controls are not subject to it. This applies only the names you list; it is not a secret scanner, and a denied file can still be pasted into an assistant by hand.
+
+### Language
+
+`"language": "es"` in `settings.json` shows Spanish in the places people read: the local interface (pages, forms, buttons, status and effort labels), the knowledge map and task history, the `export-html` snapshot, the delivery card (`card`, Markdown and HTML), and the plain-language `next_step` guidance, including the `relay: next:` hints on stderr. The `lang` attribute of every page and export follows the setting. English is the default; a value other than `en` or `es` is refused, naming the allowed values.
+
+**What stays English, on purpose:**
+
+- Library error messages (`Cannot export context ...`, `Task exists ...`) and the `relay:` prefix. A refused action in the interface therefore shows a Spanish page title around an English reason. **The "fully Spanish" criterion is not met** until those messages are localised; this is the stated limit of this release.
+- CLI option names, command names, JSON keys, and the status and effort codes inside JSON (`needs_review`, `standard`). The commands quoted inside Spanish guidance keep their English words, because that is what the person types.
+- The work packet, the packet scaffold and everything written to `.context`: events, receipts, `ENTRY.md`. Language is not a control, so it is never in a packet and changing it makes no task stale. Packets are read by assistants, and a translation would change the hashes that identify them.
+- Anything people typed: goals, criteria, notes, reviewer and owner names, checks. Relay shows these as written.
+- Values recorded by a knowledge bundle (type, lifecycle, trust, freshness) are shown as the bundle recorded them; only the labels around them are translated.
+
+The Spanish text was written by Claude, the assistant that made this change, and has been read by no one else. It has not been reviewed by a native speaker or by the first non-technical reviewer it is meant for; treat wording as unreviewed until someone has done that. Each message is one entry in `src/okf_icm/i18n.py`, a table of English and Spanish pairs, so a correction is a one-line edit. A test checks that both languages have the same entries and placeholders.
 
 ## Verification limits
 

@@ -15,6 +15,7 @@ from html import escape
 import hashlib
 import math
 
+from . import i18n
 from .knowledge import inspect_bundle, local_links, parse_concept
 from .storage import ContextError, read_text
 
@@ -34,7 +35,6 @@ table.data{border-collapse:collapse;width:100%;font-size:14px}table.data th,tabl
 .scroll{overflow-x:auto}
 """
 
-_SHAPE_NOTE = "Shape = lifecycle (circle stable, square draft, diamond deprecated). Fill = trust. Dashed outline = stale."
 
 
 def esc(value) -> str:
@@ -84,7 +84,8 @@ def bundle_model(ws) -> dict:
             "profile": report["profile"]}
 
 
-def bundle_svg(model: dict) -> str:
+def bundle_svg(model: dict, lang: str = "en") -> str:
+    t = i18n.translator(lang)
     nodes = model["nodes"][:MAX_NODES]
     if not nodes:
         return ""
@@ -113,26 +114,29 @@ def bundle_svg(model: dict) -> str:
         classes = "node " + _trust_class(node["trust"]) + (" stale" if node["freshness"] == "stale" else "")
         left = math.cos(angle) < -0.01
         lx = x + (-16 if left else 16)
-        summary = f'{node["title"]} ({node["id"]}): {node["type"]}, {node["status"]}, {node["trust"]}, freshness {node["freshness"]}'
+        summary = t("map.node", title=node["title"], id=node["id"], type=node["type"], status=node["status"],
+                    trust=node["trust"], freshness=node["freshness"])
         marks.append(f'<g><title>{esc(summary)}</title>{_shape(node["status"], classes, x, y)}'
                      f'<text x="{lx:.1f}" y="{y + 4:.1f}" text-anchor="{"end" if left else "start"}">{esc(_short(node["title"]))}</text></g>')
-    desc = f"{n} concepts and {len(edges)} links. " + _SHAPE_NOTE + " The table below lists every concept."
+    desc = t("map.desc", n=n, links=len(edges), shape=t("map.shape"))
     return (f'<svg class="viz" role="img" aria-labelledby="map-t map-d" viewBox="0 0 {width:.0f} {height:.0f}" xmlns="http://www.w3.org/2000/svg">'
-            f'<title id="map-t">Knowledge map</title><desc id="map-d">{esc(desc)}</desc>'
+            f'<title id="map-t">{esc(t("map.title"))}</title><desc id="map-d">{esc(desc)}</desc>'
             '<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>'
             + "".join(edges) + "".join(marks) + "</svg>")
 
 
-def legend() -> str:
-    items = [("stable", "t-human node", "Stable, human-reviewed"), ("stable", "t-machine node", "Stable, machine-confirmed"),
-             ("stable", "t-none node", "Stable, unverified"), ("draft", "t-none node", "Draft"),
-             ("deprecated", "t-none node", "Deprecated"), ("stable", "t-none node stale", "Stale (dashed)")]
+def legend(lang: str = "en") -> str:
+    t = i18n.translator(lang)
+    items = [("stable", "t-human node", t("map.l_human")), ("stable", "t-machine node", t("map.l_machine")),
+             ("stable", "t-none node", t("map.l_none")), ("draft", "t-none node", t("map.l_draft")),
+             ("deprecated", "t-none node", t("map.l_deprecated")), ("stable", "t-none node stale", t("map.l_stale"))]
     return '<ul class="legend">' + "".join(
         f'<li><svg class="viz icon" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">{_shape(s, c, 13, 13)}</svg>{esc(t)}</li>'
         for s, c, t in items) + "</ul>"
 
 
-def bundle_table(model: dict) -> str:
+def bundle_table(model: dict, lang: str = "en") -> str:
+    t = i18n.translator(lang)
     out_deg, in_deg = {}, {}
     for src, dst in model["edges"]:
         out_deg[src] = out_deg.get(src, 0) + 1
@@ -141,88 +145,93 @@ def bundle_table(model: dict) -> str:
         f'<tr><td>{esc(c["id"])}</td><td>{esc(c["title"])}</td><td>{esc(c["type"])}</td><td>{esc(c["status"])}</td>'
         f'<td>{esc(c["trust"])}</td><td>{esc(c["freshness"])}</td><td>{out_deg.get(c["id"], 0)} / {in_deg.get(c["id"], 0)}</td></tr>'
         for c in model["nodes"])
-    return ('<div class="scroll"><table class="data"><caption class="muted">Links are out / in. Trust labels are the bundle\'s own recorded claims; Relay does not verify them.</caption>'
-            '<thead><tr><th>Concept</th><th>Title</th><th>Type</th><th>Status</th><th>Trust</th><th>Freshness</th><th>Links</th></tr></thead>'
-            f'<tbody>{rows}</tbody></table></div>')
+    heads = "".join(f"<th>{esc(t(key))}</th>" for key in ("map.h_concept", "map.h_title", "map.h_type", "map.h_status",
+                                                         "map.h_trust", "map.h_freshness", "map.h_links"))
+    return (f'<div class="scroll"><table class="data"><caption class="muted">{esc(t("map.caption"))}</caption>'
+            f'<thead><tr>{heads}</tr></thead><tbody>{rows}</tbody></table></div>')
 
 
-def bundle_section(ws) -> str:
+def bundle_section(ws, lang: str = "en") -> str:
+    t = i18n.translator(lang)
     model = bundle_model(ws)
     if not model["nodes"] and not model["errors"]:
-        return '<p>No knowledge concepts yet. Add one with <code>okf-icm knowledge add</code>.</p>'
+        return f'<p>{t("map.empty", cmd="<code>okf-icm knowledge add</code>")}</p>'
     cut = len(model["nodes"]) - MAX_NODES
-    notice = f'<p class="muted">The map draws the first {MAX_NODES} concepts; {cut} more appear only in the table.</p>' if cut > 0 else ""
+    notice = f'<p class="muted">{t("map.truncated", max=MAX_NODES, cut=cut)}</p>' if cut > 0 else ""
     problems = ""
     if model["errors"]:
         items = "".join(f'<li>{esc(e["path"])}: {esc(e["message"])}</li>' for e in model["errors"])
-        problems = f'<div class="error" role="alert"><strong>{len(model["errors"])} concept(s) are invalid and not drawn:</strong><ul>{items}</ul></div>'
+        problems = f'<div class="error" role="alert"><strong>{t("map.invalid", n=len(model["errors"]))}</strong><ul>{items}</ul></div>'
     unresolved = sum(1 for w in model["warnings"] if w["message"].startswith("Unresolved link"))
     leaving = sum(1 for w in model["warnings"] if w["message"].startswith("Link leaves bundle"))
-    extra = f'<p class="muted">{unresolved} unresolved link(s) (allowed by OKF) and {leaving} link(s) leaving the bundle are not drawn.</p>' if unresolved or leaving else ""
-    return problems + notice + bundle_svg(model) + legend() + extra + bundle_table(model)
+    extra = f'<p class="muted">{t("map.unresolved", unresolved=unresolved, leaving=leaving)}</p>' if unresolved or leaving else ""
+    return problems + notice + bundle_svg(model, lang) + legend(lang) + extra + bundle_table(model, lang)
 
 
 # --------------------------------------------------------------- task timeline
 
-_LABELS = {"start": "Task opened", "refresh": "Context refreshed", "escalate": "Effort escalated", "submit": "Work returned",
-           "reassign": "Owner or reviewer reassigned"}
+_LABELS = ("start", "refresh", "escalate", "submit", "reassign")
 _RESET = {"start", "refresh", "escalate", "reassign"}
 
 
-def timeline_model(tasks, task: str) -> dict:
+def timeline_model(tasks, task: str, lang: str | None = None) -> dict:
+    lang = lang or tasks.language()
+    t = i18n.translator(lang)
     state, status = tasks.load(task), tasks.status(task)
     events = state["events"]
     boundary = max((i for i, e in enumerate(events) if e.get("action") in _RESET), default=0)
     rows = []
     for i, event in enumerate(events):
         action = event.get("action", "?")
-        label = _LABELS.get(action, str(action))
+        label = t(f"tl.{action}") if action in _LABELS else str(action)
         kind = action
         if action == "review":
             decision = event.get("decision", "")
-            label = "Accepted this version" if decision == "accept" else "Changes requested"
+            label = t("tl.accept") if decision == "accept" else t("tl.changes")
             kind = "accept" if decision == "accept" else "changes"
             actor = (event.get("review") or {}).get("actor")
             if actor:
-                label += f" · {actor} (self-recorded)" + _ref(event.get("review") or {})
+                label = t("tl.actor", label=label, actor=actor, sr=t("self_recorded")) + _ref(event.get("review") or {}, lang)
         if action == "start" and event.get("profile"):
-            label += f" · {event['profile']} effort"
+            label += t("tl.effort", effort=i18n.effort(lang, event["profile"]))
         if action == "refresh" and event.get("batch"):
-            label += " · batch refresh"
+            label += t("tl.batch")
         if action == "reassign" and event.get("current"):
-            label += f" · reviewer {event['current'].get('reviewer')}, owner {event['current'].get('owner')}"
+            label += t("tl.reassigned", reviewer=event["current"].get("reviewer"), owner=event["current"].get("owner"))
         if event.get("actor") and action != "review":
-            label += f" · {event['actor']} (self-recorded)"
+            label = t("tl.actor", label=label, actor=event["actor"], sr=t("self_recorded"))
         rows.append({"kind": kind, "label": label, "at": event.get("at", ""), "current": i >= boundary})
     return {"id": task, "goal": status["goal"], "status": status, "events": rows, "packets": len(state["packets"])}
 
 
-def _ref(review: dict) -> str:
-    return f" · reference: {review['external_ref']} (recorded, not verified)" if review.get("external_ref") else ""
+def _ref(review: dict, lang: str = "en") -> str:
+    return i18n.translator(lang)("tl.ref", ref=review["external_ref"]) if review.get("external_ref") else ""
 
 
-def states(s: dict) -> tuple[str, str, str]:
+def states(s: dict, lang: str = "en") -> tuple[str, str, str]:
     """The three separate answers about a task: are the sources current, was work returned, was it accepted."""
-    sources = "Current" if not s["changed"] else "Changed since selected: " + ", ".join(s["changed"])
-    work = "Returned for this version" if s["submission"] else "Not returned yet"
+    t = i18n.translator(lang)
+    sources = t("st.sources_ok") if not s["changed"] else t("st.sources_changed", paths=", ".join(s["changed"]))
+    work = t("st.work_yes") if s["submission"] else t("st.work_no")
     review = s["review"]
     if review and review["decision"] == "accept":
-        accepted = "Accepted by " + review["actor"] + " (self-recorded)" + _ref(review) if not s["changed"] else "Earlier acceptance no longer applies: inputs changed"
+        accepted = (t("st.accepted", actor=review["actor"]) + _ref(review, lang) if not s["changed"] else t("st.accept_void"))
     elif review:
-        accepted = "Changes requested"
+        accepted = t("st.changes")
     elif s["blockers"]:
-        accepted = "Blocked: " + "; ".join(s["blockers"])
+        accepted = t("st.blocked", blockers="; ".join(s["blockers"]))
     else:
-        accepted = "Not accepted"
+        accepted = t("st.not_accepted")
     return sources, work, accepted
 
 
-def strip(model: dict) -> str:
-    sources, work, accepted = states(model["status"])
+def strip(model: dict, lang: str = "en") -> str:
+    t = i18n.translator(lang)
+    sources, work, accepted = states(model["status"], lang)
     return ('<dl class="strip">'
-            f'<div><dt>Selected sources</dt><dd>{esc(sources)}</dd></div>'
-            f'<div><dt>Work and reported checks</dt><dd>{esc(work)}</dd><span class="muted">Checks are as reported by the submitter; Relay does not verify them.</span></div>'
-            f'<div><dt>Acceptance</dt><dd>{esc(accepted)}</dd></div></dl>')
+            f'<div><dt>{esc(t("st.h_sources"))}</dt><dd>{esc(sources)}</dd></div>'
+            f'<div><dt>{esc(t("st.h_work"))}</dt><dd>{esc(work)}</dd><span class="muted">{esc(t("st.checks_note"))}</span></div>'
+            f'<div><dt>{esc(t("st.h_acceptance"))}</dt><dd>{esc(accepted)}</dd></div></dl>')
 
 
 def _marker(kind: str, x: float, y: float) -> str:
@@ -239,26 +248,27 @@ def _marker(kind: str, x: float, y: float) -> str:
     return f'<circle class="ev" cx="{x:.0f}" cy="{y}" r="10"/>'
 
 
-def timeline_svg(model: dict) -> str:
+def timeline_svg(model: dict, lang: str = "en") -> str:
+    t = i18n.translator(lang)
     events, step, top, x = model["events"], 54, 28, 34
     height = top * 2 + step * max(len(events) - 1, 0)
     parts = [f'<line class="lane" x1="{x}" y1="{top}" x2="{x}" y2="{top + step * max(len(events) - 1, 0)}"/>'] if len(events) > 1 else []
     for i, event in enumerate(events):
         y = top + step * i
         cls = "" if event["current"] else ' class="old"'
-        note = "" if event["current"] else " · superseded by a later refresh"
+        note = "" if event["current"] else t("tl.superseded")
         parts.append(f'<g{cls}>{_marker(event["kind"], x, y)}<text x="{x + 24}" y="{y - 2}">{esc(event["label"])}</text>'
                      f'<text class="sub" x="{x + 24}" y="{y + 13}">{esc(event["at"])}{esc(note)}</text></g>')
-    desc = "; ".join(f'{e["label"]} at {e["at"]}' + ("" if e["current"] else " (superseded)") for e in events)
+    desc = "; ".join(t("tl.at", label=e["label"], at=e["at"]) + ("" if e["current"] else t("tl.superseded_short")) for e in events)
     return (f'<svg class="viz" role="img" aria-labelledby="tl-t-{esc(model["id"])} tl-d-{esc(model["id"])}" viewBox="0 0 640 {height}" xmlns="http://www.w3.org/2000/svg">'
-            f'<title id="tl-t-{esc(model["id"])}">Task history</title><desc id="tl-d-{esc(model["id"])}">{esc(desc)}</desc>' + "".join(parts) + "</svg>")
+            f'<title id="tl-t-{esc(model["id"])}">{esc(t("tl.title"))}</title><desc id="tl-d-{esc(model["id"])}">{esc(desc)}</desc>' + "".join(parts) + "</svg>")
 
 
-def timeline_section(tasks, task: str) -> str:
-    model = timeline_model(tasks, task)
-    return (strip(model) + timeline_svg(model)
-            + f'<p class="muted">{model["packets"]} context packet version(s) recorded. Faded events were superseded by a later refresh and no longer count toward the current version. '
-              'Marks show recorded events, not proof that checks were correct.</p>')
+def timeline_section(tasks, task: str, lang: str | None = None) -> str:
+    lang = lang or tasks.language()
+    model = timeline_model(tasks, task, lang)
+    return (strip(model, lang) + timeline_svg(model, lang)
+            + f'<p class="muted">{esc(i18n.translator(lang)("tl.note", n=model["packets"]))}</p>')
 
 
 # ------------------------------------------------------------------- snapshot
@@ -280,6 +290,8 @@ def csp_for(css: str) -> str:
 
 def export_html(tasks) -> str:
     """One self-contained page: no scripts, no network, style pinned by hash."""
+    lang = tasks.language()
+    t = i18n.translator(lang)
     css = _EXPORT_CSS + VIZ_CSS
     csp = csp_for(css)
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -288,18 +300,19 @@ def export_html(tasks) -> str:
     names = sorted(p.parent.name for p in folder.glob("*/state.json")) if folder.exists() else []
     for name in names:
         try:
-            model = timeline_model(tasks, name)
+            model = timeline_model(tasks, name, lang)
             s = model["status"]
-            cards.append(f'<section><h3>{esc(s["goal"])}</h3><span class="badge">{esc(s["status"])}</span><span class="badge">{esc(s["route"]["profile"])} effort</span>'
-                         f'<span class="badge">{esc(s["id"])}</span><p class="muted">Owner: {esc(s["owner"])} · Reviewer: {esc(s["reviewer"])} · Revision {s["revision"]}</p>'
-                         + strip(model) + timeline_svg(model) + "</section>")
+            meta = t("snap.meta", owner=esc(s["owner"]), reviewer=esc(s["reviewer"]), revision=s["revision"])
+            cards.append(f'<section><h3>{esc(s["goal"])}</h3><span class="badge">{esc(i18n.status_label(lang, s["status"]))}</span>'
+                         f'<span class="badge">{esc(i18n.effort(lang, s["route"]["profile"]))}</span>'
+                         f'<span class="badge">{esc(s["id"])}</span><p class="muted">{meta}</p>'
+                         + strip(model, lang) + timeline_svg(model, lang) + "</section>")
         except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:
-            cards.append(f'<section><h3>{esc(name)}</h3><p class="error" role="alert">This task could not be read and is not shown: {esc(exc)}</p></section>')
+            cards.append(f'<section><h3>{esc(name)}</h3><p class="error" role="alert">{t("snap.unreadable", error=esc(exc))}</p></section>')
     project = tasks.ws.root.name
-    return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            f'<meta http-equiv="Content-Security-Policy" content="{esc(csp)}"><meta name="robots" content="noindex"><title>{esc(project)} · Relay snapshot</title>'
+    return (f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<meta http-equiv="Content-Security-Policy" content="{esc(csp)}"><meta name="robots" content="noindex"><title>{t("snap.title", project=esc(project))}</title>'
             f'<style>{css}</style></head><body><main><h1>{esc(project)}</h1>'
-            f'<p class="muted">Relay snapshot generated {esc(stamp)}. It is a point-in-time copy, not a live view. It lists goals, acceptance state, '
-            'owners, reviewers and recorded events; it contains no source, packet or deliverable contents. Names are self-recorded; no organization authenticated them.</p>'
-            f'<section><h2>Knowledge map</h2>{bundle_section(tasks.ws)}</section>'
-            f'<h2>Tasks ({len(names)})</h2>{"".join(cards) or "<p>No tasks yet.</p>"}</main></body></html>')
+            f'<p class="muted">{t("snap.intro", stamp=esc(stamp))}</p>'
+            f'<section><h2>{esc(t("map.title"))}</h2>{bundle_section(tasks.ws, lang)}</section>'
+            f'<h2>{t("snap.tasks", n=len(names))}</h2>{"".join(cards) or "<p>" + t("snap.no_tasks") + "</p>"}</main></body></html>')

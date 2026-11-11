@@ -121,7 +121,7 @@ def _failure_hint(args) -> None:
     try:
         tasks = Tasks(args.root)
         status = tasks.status(task)
-        step = guidance.next_step(status, guidance.command_prefix(tasks.root))
+        step = guidance.next_step(status, guidance.command_prefix(tasks.root), tasks.language())
     except Exception:  # best effort: a corrupt task is reported by the original error
         return
     if step and status["status"] in {"needs_review", "blocked"}:
@@ -169,7 +169,7 @@ def main(argv=None):
                 if args.stale:
                     result = [item for item in result if item["freshness"] == "changed"]
                     if result:
-                        print("relay: next: " + guidance.stale_step(len(result), guidance.command_prefix(tasks.root)), file=sys.stderr)
+                        print("relay: next: " + guidance.stale_step(len(result), guidance.command_prefix(tasks.root), tasks.language()), file=sys.stderr)
                 if args.brief:
                     result = tasks.brief(result)
             elif args.command == "show":
@@ -189,7 +189,7 @@ def main(argv=None):
                           "note": "Names are self-recorded and checks are as reported; no source or deliverable contents are included."}
             elif args.command == "context":
                 text = tasks.context(args.task)
-                hint = guidance.after_context(args.task, guidance.command_prefix(tasks.root))
+                hint = guidance.after_context(args.task, guidance.command_prefix(tasks.root), tasks.language())
                 if args.out:
                     atomic_write(args.out, text, exclusive=True)
                     result = {"written": str(args.out), "next_step": hint}

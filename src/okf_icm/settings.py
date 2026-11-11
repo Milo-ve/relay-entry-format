@@ -9,10 +9,11 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+from .i18n import LANGUAGES
 from .storage import ContextError, read_json
 
 RELATIVE = ".context/relay/settings.json"
-DEFAULTS = {"lock_wait_seconds": 5.0, "require_expected_revision": False, "deny_paths": []}
+DEFAULTS = {"lock_wait_seconds": 5.0, "require_expected_revision": False, "deny_paths": [], "language": "en"}
 MAX_WAIT = 300.0
 MAX_PATTERNS = 100
 MAX_PATTERN_LENGTH = 200
@@ -35,6 +36,10 @@ def _check(key: str, value):
         if any(not _normal(x) for x in value):
             raise ContextError(f"{RELATIVE}: a deny_paths pattern cannot be only slashes or dots.")
         return [x.strip() for x in value]
+    if key == "language":
+        if value not in LANGUAGES:
+            raise ContextError(f"{RELATIVE}: language must be one of {', '.join(LANGUAGES)}.")
+        return value
     raise ContextError(f"{RELATIVE}: unknown setting '{key}'. Known settings: {', '.join(DEFAULTS)}.")
 
 

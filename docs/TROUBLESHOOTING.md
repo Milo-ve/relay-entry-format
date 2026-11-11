@@ -87,6 +87,10 @@ Once a version is accepted, editing its result, its evidence or a source returns
 **`Escalation unavailable. Reassess scope or resolve the missing prerequisite.`**
 A task allows one escalation, to Investigative. Either it is already used, or the route is Clarify or Investigative. Reassess the scope, or start a new task with the right route.
 
+### The interface is in the wrong language
+
+The text follows the `language` setting in `.context/relay/settings.json` (`en` or `es`); see [Language](RELAY.md#language). Error reasons stay in English in both languages, and so do commands, JSON keys and packets. If the setting is invalid, every page names the problem in English until you correct the file.
+
 ### Many tasks changed at once
 
 One edited source can make several tasks `needs_review`. List them with `relay list --stale --brief`, then run `relay refresh --all-stale --note "what changed"`. That only previews: it shows each task's changed paths and whether a submission or acceptance would be cleared, and writes nothing. Add `--apply` once you have read it. A task that could not be refreshed appears under `failed` and keeps its earlier snapshot; the exit code is 2. Prerequisites stay open (`--resolve` is not available in a batch), and no review is ever created. If `require_expected_revision` is on, the batch form is refused; refresh each task with its `--expected-revision`.

@@ -59,6 +59,10 @@ class Tasks:
         """Optional tool settings, read fresh each time so edits apply without a restart."""
         return settings.load(self.ws.home)
 
+    def language(self) -> str:
+        """Language of the people-facing views and guidance (`en` or `es`), from the optional settings file."""
+        return self.settings()["language"]
+
     def writer(self):
         """Writer lock that waits for the configured time before reporting the workspace as busy."""
         return lock(self.ws.home, wait=self.settings()["lock_wait_seconds"])
@@ -216,7 +220,7 @@ class Tasks:
                   "acceptance": state["acceptance"], "boundaries": state["boundaries"], "blockers": state["blockers"],
                   "submission": submission, "review": review, "review_required": state["review_required"],
                   "identity_assurance": "self-recorded-local-assertion", "escalations": state["escalations"]}
-        result["next_step"] = guidance.next_step(result, guidance.command_prefix(self.root))
+        result["next_step"] = guidance.next_step(result, guidance.command_prefix(self.root), self.language())
         return result
 
     def list(self):
@@ -342,11 +346,7 @@ class Tasks:
                 failed.append({"id": task, "error": str(exc)})
         if apply:
             return {"mode": "apply", "stale": len(stale), "refreshed": refreshed, "failed": failed}
-        if tasks:
-            step = ("Nothing was written. Run the same command with --apply to refresh the tasks listed under `tasks`. "
-                    "Each loses its current submission and acceptance; history is kept. No review is created.")
-        else:
-            step = "Nothing was written." if stale or failed else "No task has changed inputs."
+        step = guidance.batch_preview_step(bool(tasks), bool(stale or failed), self.language())
         return {"mode": "preview", "stale": len(stale), "tasks": tasks, "failed": failed, "next_step": step}
 
     def reassign(self, task, note, owner=None, reviewer=None, expected=None, actor=None):

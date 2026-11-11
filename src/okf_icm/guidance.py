@@ -1,12 +1,15 @@
 """Plain-language next steps for a task, derived only from its computed status.
 
 Guidance is advice for the operator. It is never written into a packet, never
-grants permission, and never changes a task's state.
+grants permission, and never changes a task's state. The text follows the `language`
+setting (see i18n.py); the commands inside it keep their English words.
 """
 from __future__ import annotations
 
 from pathlib import Path
 import shlex
+
+from .i18n import translator
 
 _MAX_LISTED = 5
 
@@ -20,62 +23,54 @@ def command_prefix(root: Path) -> str:
     return "relay" if here else f"relay --root {shlex.quote(str(root))}"
 
 
-def listed(items: list[str]) -> str:
+def listed(items: list[str], language: str | None = None) -> str:
     shown = ", ".join(items[:_MAX_LISTED])
     extra = len(items) - _MAX_LISTED
-    return shown + (f" (+{extra} more)" if extra > 0 else "")
+    return shown + (" " + translator(language)("guide.more", n=extra) if extra > 0 else "")
 
 
 def _submit(relay: str, task: str) -> str:
     return f'`{relay} submit {task} --output RESULT --evidence EVIDENCE --checks "..." --next "..."`'
 
 
-def next_step(status: dict, relay: str = "relay") -> str:
+def next_step(status: dict, relay: str = "relay", language: str | None = None) -> str:
+    t = translator(language)
     task, state = status["id"], status["status"]
     blockers = status.get("blockers") or []
     if state == "needs_review":
-        text = (f"Changed since the snapshot: {listed(status['changed'])}. "
-                f'Run `{relay} refresh {task} --note "what changed"` to take a new snapshot. '
-                "That clears the current submission and acceptance and keeps the history. "
-                "Then reassess the work the change affects.")
+        text = t("guide.needs_review", changed=listed(status["changed"], language), relay=relay, task=task)
         if blockers:
-            text += f" Prerequisites are also still open: {listed(blockers)}."
+            text += t("guide.also_open", blockers=listed(blockers, language))
         return text
     if state == "blocked":
-        return (f"Open prerequisites: {listed(blockers)}. Resolve them outside Relay, then run "
-                f'`{relay} refresh {task} --resolve --note "what was resolved"`. '
-                "--resolve records that you resolved them; Relay does not check.")
+        return t("guide.blocked", blockers=listed(blockers, language), relay=relay, task=task)
     if state == "ready":
-        return (f"Export the packet with `{relay} context {task} --out {task}-context.md` and work in your assistant. "
-                "Save the result and the checks you actually ran as separate files, then run "
-                f"{_submit(relay, task)}.")
+        return t("guide.ready", relay=relay, task=task, submit=_submit(relay, task))
     if state == "awaiting_review":
-        reviewer, sid = status["reviewer"], status["submission"]["submission_id"]
-        return (f"Waiting for {reviewer} to review this exact version: "
-                f'`{relay} review {task} --submission {sid} --decision accept|request_changes --actor {reviewer} --note "..."`. '
-                "Editing the result, the evidence or a source before then returns the task to needs_review.")
+        return t("guide.awaiting", reviewer=status["reviewer"], sid=status["submission"]["submission_id"], relay=relay, task=task)
     if state == "changes_requested":
-        return ("Changes were requested; read the review note in this output. Revise the result and evidence, "
-                f'then run `{relay} refresh {task} --note "what you revised"` (editing the files changes the submitted version) '
-                f"and {_submit(relay, task)} again.")
+        return t("guide.changes_requested", relay=relay, task=task, submit=_submit(relay, task))
     if state == "accepted":
         review = status["review"]
-        reference = f" Reference: {review['external_ref']} (recorded, not verified)." if review.get("external_ref") else ""
-        return (f"Accepted by {review['actor']} (self-recorded) for submission {review['submission_id'][:12]}.{reference} "
-                "The acceptance covers only this version: if a source, the result or the evidence changes, the task returns to needs_review. "
-                "Folding the result into a canonical source is a separate step that Relay does not perform.")
+        reference = t("guide.reference", ref=review["external_ref"]) if review.get("external_ref") else ""
+        return t("guide.accepted", actor=review["actor"], sid=review["submission_id"][:12], reference=reference)
     if state == "submitted":
-        return "Submitted. This task does not require review, so nothing here records acceptance."
+        return t("guide.submitted")
     return ""
 
 
-def stale_step(count: int, relay: str = "relay") -> str:
+def stale_step(count: int, relay: str = "relay", language: str | None = None) -> str:
     """Advice after `list --stale`. Printed on stderr so the JSON list on stdout stays clean."""
-    return (f'{count} task(s) changed since their snapshot. `{relay} show TASK` explains one. After a shared source changed, '
-            f'`{relay} refresh --all-stale --note "what changed"` previews refreshing all of them and writes nothing; '
-            "add --apply to do it. A refresh clears each task's submission and acceptance, so reassess the work first.")
+    return translator(language)("guide.stale", count=count, relay=relay)
 
 
-def after_context(task: str, relay: str = "relay") -> str:
-    return ("Packet exported. Work in your assistant. Save the result and the checks you actually ran as separate files, "
-            "outside .context and not among the selected inputs, then run " + _submit(relay, task) + ".")
+def batch_preview_step(has_tasks: bool, anything_found: bool, language: str | None = None) -> str:
+    """The `next_step` of `refresh --all-stale` without --apply."""
+    t = translator(language)
+    if has_tasks:
+        return t("guide.batch_apply")
+    return t("guide.batch_nothing") if anything_found else t("guide.batch_none")
+
+
+def after_context(task: str, relay: str = "relay", language: str | None = None) -> str:
+    return translator(language)("guide.after_context", submit=_submit(relay, task))
