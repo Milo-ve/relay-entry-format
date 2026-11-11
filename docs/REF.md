@@ -43,6 +43,28 @@ The two kinds differ in what surrounds `files`:
 
 ## Version and compatibility
 
+The optional bundled `relay-workspace` skill connects an assistant to these
+controls. `relay skill --to DIRECTORY` installs it; `relay --root PROJECT workspace`
+previews workspace onboarding and `--apply` saves prior modified files and a
+layout inventory before appending an `AGENTS.md` entry pointing to the controls.
+New entry scaffolds describe both task and stage commands and this optional
+skill. Existing `.context` controls and packet shapes are unchanged. This bridge does
+not elevate source data or grant authority. See [workspace adaptation](RELAY.md#workspace-adaptation).
+
+The optional portable `ref` skill extends that guidance to task handoffs and
+continuity. `relay skill --name ref --to DIRECTORY` copies its complete resource
+tree; `--zip FILE` exports that tree and `--manual FILE` exports a standalone
+guide and return template. Installation does not adapt any project. Native
+invocation syntax and actual tool access depend on the client; the
+[validation record](ref-validation.md) separates offline checks from observed
+client behavior.
+
+`relay workspace --claude` includes an optional `CLAUDE.md` import of the common
+`AGENTS.md` bridge. Applying saves originals before appending; existing controls,
+packets and stage graphs remain unchanged. New entry scaffolds mention `ref`.
+These assistant instructions are an adapter to REF, not additional control files,
+a new packet kind or a replacement for explicit reviewer decisions.
+
 REF v1 is a name for the format as it exists now. There is no version marker on disk, and Relay does not add one to existing projects. A future incompatible change would bump `schema_version` and require an explicit, documented migration, never an automatic one.
 
 The package name `okf-icm` and both commands, `okf-icm` and `relay`, are unchanged.

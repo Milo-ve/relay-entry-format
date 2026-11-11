@@ -15,6 +15,10 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | Command                  | Effect                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `init PATH`              | Initialize the existing `.context` format without overwriting.                                                |
+| `skill [--name ref] --to DIRECTORY` | Install a complete bundled skill tree; default remains `relay-workspace`; refuse different contents. |
+| `skill [--name ref] --zip FILE` | Export the complete skill folder as a new ZIP; never overwrite. |
+| `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
+| `workspace [--apply] [--claude]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`.                                |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -28,6 +32,57 @@ The task layer provides a compact lifecycle instead of silently creating and com
 ### Operator guidance
 
 `next_step` in `show`/`list` output is derived only from the computed status. It is advice for the operator: it is never written into a packet, grants no permission, and does not change task state. `context` prints its guidance on stderr, so stdout stays a clean packet; with `--out` it appears as `next_step` in the JSON result. When another task command is refused because inputs changed or prerequisites are open, the CLI prints the same advice after the error. Refusal messages raised by the library name the cause but not CLI commands, because the browser interface shows them too. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### Workspace adaptation
+
+`relay --root PROJECT workspace` previews changes without writing. `--apply`
+records original bytes of affected `AGENTS.md` and `.gitignore` files (or their
+absence) and a path/type inventory in `.relay-backups/workspace-*/manifest.json`
+before the first workspace change. Inventory omits `.git`, `.context`, backups,
+virtual environments and Python caches; it does not copy source contents or
+follow directory symlinks. Managed paths cannot be symlinks. Existing `.context`
+must be compatible and is never rewritten; otherwise the usual initializer runs.
+Existing instructions remain before the appended Relay guidance. Ignore rules
+cover local context, backups, deliverables, virtual environments and `.env*`.
+The command never moves sources, creates tasks, migrates graphs or records acceptance.
+
+`--claude` explicitly includes `CLAUDE.md` in preview and backup and appends a
+small `@AGENTS.md` import. Existing instructions and original line-ending bytes
+are preserved; an existing import is left alone. Without the flag, `CLAUDE.md`
+is untouched. A different existing managed bridge is refused for reconciliation.
+For compatible existing workspaces, application also respects the cooperative
+`.context/write.lock`; preview does not create a lock or any files.
+
+The backup is local and may contain private instructions and filenames. Ignore
+rules do not remove already tracked files from Git. Do not publish backups or
+private packets. A failed multi-file operation can leave partial changes; inspect
+the backup and workspace before retrying. Avoid concurrent external edits.
+
+To undo, compare current files with saved originals, then restore files listed
+as previously present and remove newly created files only if subsequent work
+will not be lost. If the manifest says `context_existed: false`, a newly created
+`.context` may be removed only after checking that no later task, run or knowledge
+work needs retaining. Never remove a pre-existing `.context`. No automatic
+destructive rollback is provided.
+
+### Portable skill and manual return
+
+`ref` is a shared instruction tree for preparation, task administration and
+continuity. Its entry routes to operation-specific references and a return
+template, all included in both directory and ZIP distribution. The installer
+uses package resources, so an installed wheel does not need the source checkout.
+It refuses different existing trees rather than merging customized resources.
+An identical tree is a no-op. Destinations are explicit; no global client
+configuration is discovered or changed automatically.
+
+The same content is intended for Codex `.agents/skills/ref` and Claude Code
+`.claude/skills/ref`. Invocation syntax belongs to the host; installing a folder
+does not prove discovery. The skill requires checking visible duplicate copies
+and actual file/CLI/write access. No-tool use asks an operator for an exported
+packet and returns separate result and evidence bodies without claiming writes.
+The operator checks packet identity and freshness before recording the return;
+review remains an explicit separate decision. See [validation](ref-validation.md)
+for observed checks and outstanding client gates. No MCP server is included.
 
 ## Sources and packets
 
