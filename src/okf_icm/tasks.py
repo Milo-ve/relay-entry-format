@@ -87,10 +87,13 @@ class Tasks:
 
     def files(self, selections: list[str]) -> list[dict]:
         files, seen = [], set()
+        deny = self.settings()["deny_paths"]
         for selection in [*CONTROLS, *selections]:
             path, separator, heading = selection.partition("#")
             if path.startswith(".context/relay/"):
                 raise ContextError("Task state cannot be selected as its own source.")
+            if selection not in CONTROLS:
+                settings.check_selection(self.root, path, deny)
             if (path, heading) in seen:
                 continue
             seen.add((path, heading))
@@ -230,7 +233,15 @@ class Tasks:
             reasons.append("Open prerequisites: " + guidance.listed(state["blockers"]) + ". Resolve them, then refresh with the resolved flag.")
         if reasons:
             raise ContextError("Cannot export context. " + " ".join(reasons))
-        return self.render_packet(self.packet(state))
+        packet = self.packet(state)
+        deny = self.settings()["deny_paths"]
+        for item in packet["files"]:
+            if item["role"] != "control":
+                try:
+                    settings.check_selection(self.root, item["path"], deny)
+                except ContextError as exc:
+                    raise ContextError(f"Cannot export context: this packet was taken before the rule. {exc}") from exc
+        return self.render_packet(packet)
 
     @staticmethod
     def render_packet(packet):

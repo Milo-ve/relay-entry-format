@@ -45,6 +45,9 @@ A `--select` path does not exist. Paths are relative to the project root, which 
 **`Context needs N characters; budget is M. Nothing was silently omitted.`**
 The selected sources do not fit in the packet, and Relay will not drop part of one. Select fewer files or narrower headings, or raise `--max-chars` on purpose.
 
+**`'PATH' matches the deny_paths pattern 'PATTERN' in .context/relay/settings.json and cannot be selected as a source.`**
+The path, or the file a link points to, is listed in `deny_paths`. Choose other sources, or edit the setting if the rule is wrong. Nothing was created. If a `refresh` fails this way, the task keeps its earlier snapshot; start a new task without that source.
+
 ### Why can't I export the context?
 
 `relay context` exports only a packet that matches what is on disk and has no open prerequisites. The message names the cause.
@@ -54,6 +57,9 @@ A selected source, a control file, or a submitted result or evidence file no lon
 
 **`Cannot export context. Open prerequisites: .... Resolve them, then refresh with the resolved flag.`**
 A `--blocker` was recorded at `start`. Resolve it outside Relay, then run `relay refresh TASK --resolve --note "..."`. The flag records that you resolved it. Relay does not check.
+
+**`Cannot export context: this packet was taken before the rule.`**
+A source in the frozen packet now matches `deny_paths`, so the packet is not exported. Start a new task without that source.
 
 ### Why can't I submit?
 

@@ -138,7 +138,10 @@ Optional tool settings live in `.context/relay/settings.json`. Relay never creat
 | Key | Default | Effect |
 | --- | --- | --- |
 | `lock_wait_seconds` | `5` | How long a writer waits for `write.lock`, 0 to 300. `0` fails at once. |
-| `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `submit` and `review` are refused without `--expected-revision`. |
+| `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `reassign`, `submit` and `review` are refused without `--expected-revision`. |
+| `deny_paths` | `[]` | Names that may never be selected as a source, in task and stage packets. See below. |
+
+`deny_paths` patterns are matched case-insensitively against the spelled path and against the path it resolves to through links, and against every parent directory. A pattern without a slash matches any one path component (`secrets`, `*.pem`). A pattern with a slash matches the whole path or any parent directory of it (`finance/payroll*`); `*` also crosses slashes. The check runs before a file is read, so a refused `start` creates no task folder, and a `refresh` whose source became denied is refused with nothing changed. A packet taken before the rule is also refused at `context` export. Project controls are not subject to it. This applies only the names you list; it is not a secret scanner, and a denied file can still be pasted into an assistant by hand.
 
 ## Verification limits
 

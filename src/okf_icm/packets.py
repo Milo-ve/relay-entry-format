@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 
+from . import settings
 from .storage import ContextError, atomic_write, identifier, json_text, now, readable, read_json
 
 
@@ -73,6 +74,9 @@ def build_packet(ws, run: str, sid: str | None, selections: list[str]) -> dict:
     for dep in stage.get("needs", []):
         for output in state["stages"][dep].get("receipt", {}).get("outputs", []):
             requests.append((output["path"], "artifact"))
+    deny = settings.load(ws.home)["deny_paths"]
+    for value in selections:
+        settings.check_selection(ws.root, value.partition("#")[0], deny)
     requests += [(value, "knowledge" if value.startswith(".context/knowledge/") else "artifact") for value in selections]
     files, warnings, seen = [], [], set()
     for spec, role in requests:
