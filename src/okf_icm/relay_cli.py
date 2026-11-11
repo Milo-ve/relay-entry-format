@@ -53,6 +53,8 @@ def parser():
     listing = sub.add_parser("list", help="List tasks with current freshness and acceptance")
     listing.add_argument("--brief", action="store_true",
                          help="Only id, status, freshness, owner, reviewer and revision; use `show` for detail")
+    listing.add_argument("--stale", action="store_true",
+                         help="Only tasks whose inputs changed since their snapshot (combine with --brief)")
     show = sub.add_parser("show")
     show.add_argument("task")
     ctx = sub.add_parser("context", help="Export the current portable work packet")
@@ -60,12 +62,15 @@ def parser():
     ctx.add_argument("--out", type=Path)
     for command in ("refresh", "escalate"):
         item = sub.add_parser(command)
-        item.add_argument("task")
+        item.add_argument("task", nargs="?" if command == "refresh" else None)
         item.add_argument("--note", required=True)
         item.add_argument("--expected-revision", type=int)
         item.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
         if command == "refresh":
             item.add_argument("--resolve", action="store_true", help="Record that the operator resolved listed prerequisites")
+            item.add_argument("--all-stale", action="store_true",
+                              help="Instead of one task: every task whose inputs changed. Previews and writes nothing unless --apply is given")
+            item.add_argument("--apply", action="store_true", help="With --all-stale: perform the refreshes shown by the preview")
     reassign = sub.add_parser("reassign", help="Change owner and/or reviewer; takes a new snapshot and clears the current submission and review")
     reassign.add_argument("task")
     reassign.add_argument("--owner")
@@ -123,6 +128,19 @@ def _failure_hint(args) -> None:
         print(f"relay: next: {step}", file=sys.stderr)
 
 
+def _refresh_all_stale(tasks, args):
+    """`refresh --all-stale`: a preview unless --apply. Only the apply takes the writer lock."""
+    if args.task:
+        raise ContextError("Give either a task or --all-stale, not both.")
+    if args.resolve or args.expected_revision is not None:
+        raise ContextError("--all-stale cannot be combined with --resolve (open prerequisites are resolved one task at a time, "
+                           "on purpose) or --expected-revision (each task has its own).")
+    if not args.apply:
+        return tasks.refresh_stale(args.note, apply=False, actor=args.actor)
+    with tasks.writer():
+        return tasks.refresh_stale(args.note, apply=True, actor=args.actor)
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
@@ -148,10 +166,16 @@ def main(argv=None):
                 return 0
             if args.command == "list":
                 result = tasks.list()
+                if args.stale:
+                    result = [item for item in result if item["freshness"] == "changed"]
+                    if result:
+                        print("relay: next: " + guidance.stale_step(len(result), guidance.command_prefix(tasks.root)), file=sys.stderr)
                 if args.brief:
                     result = tasks.brief(result)
             elif args.command == "show":
                 result = tasks.status(args.task)
+            elif args.command == "refresh" and args.all_stale:
+                result = _refresh_all_stale(tasks, args)
             elif args.command == "card":
                 from .card import render
                 text = render(tasks, args.task, args.format)
@@ -175,6 +199,10 @@ def main(argv=None):
                     print(f"relay: next: {hint}", file=sys.stderr)
                     return 0
             else:
+                if args.command == "refresh" and not args.task:
+                    raise ContextError("Name a task to refresh, or use --all-stale to preview every task whose inputs changed.")
+                if getattr(args, "apply", False):
+                    raise ContextError("--apply only goes with refresh --all-stale.")
                 with tasks.writer():
                     if args.command == "start":
                         result = tasks.start(args.task, args.goal, args.accept, args.select, args.kind, args.risk,
@@ -195,7 +223,8 @@ def main(argv=None):
                     else:
                         raise ContextError("Unknown operation.")
         print(json_text(result), end="")
-        return 0
+        # A batch reports every task it could not read or refresh and exits 2, so a script cannot miss it.
+        return 2 if args.command == "refresh" and isinstance(result, dict) and result.get("failed") else 0
     except (ContextError, OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
         print(f"relay: {exc}", file=sys.stderr)
         _failure_hint(args)

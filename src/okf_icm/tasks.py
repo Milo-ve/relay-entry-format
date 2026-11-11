@@ -257,8 +257,8 @@ class Tasks:
                 "Return the deliverable, actual checks, uncertainties, and next action. Never invent approval or executed checks.\n\n"
                 + json_text(packet))
 
-    def _resnapshot(self, state, escalate=False):
-        """Take a new packet from current sources and clear the submission and review. Caller saves."""
+    def _new_packet(self, state, escalate=False) -> dict:
+        """Build the packet a refresh would take, within the budget. Reads sources; writes nothing."""
         # Explicit refresh returns to rules; old Jev observations must not be reused on new state.
         packet = self.snapshot(state)
         if escalate or state["escalations"]:
@@ -267,11 +267,16 @@ class Tasks:
             packet["route"]["reason_codes"].append("operator-escalation")
             packet["packet_id"] = packet_hash(packet)
         self.ensure_budget(packet, state["max_chars"])
-        self.persist_packet(state, packet)
+        return packet
+
+    def _resnapshot(self, state, escalate=False):
+        """Take a new packet from current sources and clear the submission and review. Caller saves."""
+        self.persist_packet(state, self._new_packet(state, escalate))
         state["submission"] = None
         state["review"] = None
 
-    def refresh(self, task, note, expected=None, resolve=False, escalate=False, actor=None):
+    def refresh(self, task, note, expected=None, resolve=False, escalate=False, actor=None, batch_changed=None):
+        """`batch_changed` is set only by `refresh_stale`: the event then records `batch` and the changed paths."""
         state = self.load(task)
         self.check_revision(state, expected)
         note = _nonempty(note, "Refresh/escalation note")
@@ -284,8 +289,65 @@ class Tasks:
         self._resnapshot(state, escalate)
         if escalate:
             state["escalations"] += 1
-        self.save(state, "escalate" if escalate else "refresh", note=note, resolved_by_operator=resolve, **_who(actor))
+        extra = {"batch": True, "changed": list(batch_changed)} if batch_changed is not None else {}
+        self.save(state, "escalate" if escalate else "refresh", note=note, resolved_by_operator=resolve, **extra, **_who(actor))
         return self.status(task)
+
+    def stale(self) -> tuple[list[dict], list[dict]]:
+        """Tasks whose inputs changed since their snapshot, and tasks that could not be read. Reads only.
+
+        One unreadable task never hides the others: it is reported with its error.
+        """
+        folder = self.ws.path(".context/relay/tasks")
+        stale, unreadable = [], []
+        for path in sorted(folder.glob("*/state.json")) if folder.exists() else []:
+            try:
+                status = self.status(path.parent.name)
+            except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:
+                unreadable.append({"id": path.parent.name, "error": str(exc)})
+                continue
+            if status["freshness"] == "changed":
+                stale.append(status)
+        return stale, unreadable
+
+    def refresh_stale(self, note, apply=False, actor=None) -> dict:
+        """Preview, or with `apply` perform, a refresh of every task whose inputs changed.
+
+        The preview reads sources and writes nothing; it names each task's changed paths, whether its
+        submission or acceptance would be cleared, and any task whose refresh would be refused. Applying
+        takes a normal refresh per task (one event each, marked as batch) and never records a review.
+        A task that fails is reported and does not stop the others. The caller holds the writer lock when applying.
+        """
+        note, actor = _nonempty(note, "Refresh note"), _actor(actor)
+        if self.settings()["require_expected_revision"]:
+            raise ContextError("This workspace requires the expected revision (settings.json), which differs for every task. "
+                               "Refresh each task with `relay refresh TASK --expected-revision N` instead.")
+        stale, failed = self.stale()
+        tasks, refreshed = [], []
+        for status in stale:
+            task, state = status["id"], self.load(status["id"])
+            review = state["review"]
+            item = {"id": task, "status": status["status"], "changed": status["changed"],
+                    "clears_submission": state["submission"] is not None,
+                    "clears_acceptance": bool(review and review["decision"] == "accept")}
+            try:
+                if apply:
+                    result = self.refresh(task, note, actor=actor, batch_changed=status["changed"])
+                    item.update(revision=result["revision"], status=result["status"])
+                    refreshed.append(item)
+                else:
+                    self._new_packet(state)
+                    tasks.append(item)
+            except (ContextError, OSError, ValueError, KeyError, TypeError) as exc:
+                failed.append({"id": task, "error": str(exc)})
+        if apply:
+            return {"mode": "apply", "stale": len(stale), "refreshed": refreshed, "failed": failed}
+        if tasks:
+            step = ("Nothing was written. Run the same command with --apply to refresh the tasks listed under `tasks`. "
+                    "Each loses its current submission and acceptance; history is kept. No review is created.")
+        else:
+            step = "Nothing was written." if stale or failed else "No task has changed inputs."
+        return {"mode": "preview", "stale": len(stale), "tasks": tasks, "failed": failed, "next_step": step}
 
     def reassign(self, task, note, owner=None, reviewer=None, expected=None, actor=None):
         """Change the owner and/or reviewer. They are part of the frozen brief, so this takes a new

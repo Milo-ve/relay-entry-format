@@ -69,6 +69,13 @@ def next_step(status: dict, relay: str = "relay") -> str:
     return ""
 
 
+def stale_step(count: int, relay: str = "relay") -> str:
+    """Advice after `list --stale`. Printed on stderr so the JSON list on stdout stays clean."""
+    return (f'{count} task(s) changed since their snapshot. `{relay} show TASK` explains one. After a shared source changed, '
+            f'`{relay} refresh --all-stale --note "what changed"` previews refreshing all of them and writes nothing; '
+            "add --apply to do it. A refresh clears each task's submission and acceptance, so reassess the work first.")
+
+
 def after_context(task: str, relay: str = "relay") -> str:
     return ("Packet exported. Work in your assistant. Save the result and the checks you actually ran as separate files, "
             "outside .context and not among the selected inputs, then run " + _submit(relay, task) + ".")

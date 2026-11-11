@@ -20,11 +20,12 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
-| `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. |
+| `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. `list --stale` keeps only tasks whose inputs changed since their snapshot and combines with `--brief`; it adds a one-line hint on stderr, so the JSON on stdout is unchanged. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
 | `submit ID [--snapshot]` | Bind separate result and evidence files to the current packet. `--snapshot` first validates, then signs byte-for-byte copies under `deliverables/ID/rREV/`; see [Result and acceptance](#result-and-acceptance). |
 | `review ID`              | Record a decision for the exact current submission and assigned reviewer name.                                |
 | `refresh ID`             | Snapshot current sources and clear the current submission and acceptance; retain history.                     |
+| `refresh --all-stale --note N [--apply]` | After a shared source changed: preview, or with `--apply` perform, a refresh of every task whose inputs changed; see [Refreshing many tasks](#refreshing-many-tasks). |
 | `escalate ID`            | Explicitly increase effort to Investigative, with a reason and a one-escalation limit.                        |
 | `reassign ID`            | Change the owner and/or reviewer with a note. Owner and reviewer are part of the frozen packet brief, so this takes a new snapshot and clears the current submission and review; history is kept. Refused while inputs are changed or if nothing would change. |
 | `serve`                  | Serve the local forms and packet downloads on 127.0.0.1.                                                      |
@@ -32,6 +33,16 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `export-html --out FILE` | Write a self-contained, script-free snapshot of the knowledge map and every task's history. Never overwrites. |
 
 `start`, `submit`, `refresh`, `escalate` and `reassign` accept an optional `--actor NAME`, stored on the event only when given (at most 80 characters, no control characters). It is a self-recorded label for the history, like the reviewer name: it is not authentication and is never required. Events written before it existed load and display unchanged.
+
+### Refreshing many tasks
+
+When one shared source changes, every task that selected it becomes `needs_review`. `relay list --stale --brief` shows them. `relay refresh --all-stale --note "what changed"` then **previews and writes nothing**: for each stale task it lists the changed paths and whether its current submission or acceptance would be cleared, and it names any task whose refresh would be refused (for example, a source that now exceeds the task's character budget or matches `deny_paths`). Run the same command with `--apply` to perform it.
+
+- Applying is an ordinary refresh per task: one event each, carrying your note, `batch: true` and the changed paths, under one writer lock. Each task loses its current submission and acceptance and keeps its history, exactly as a single `refresh` does. **Read the preview first**: an accepted task that depended on the changed source stops being accepted.
+- It never creates a review, never resolves open prerequisites (`--resolve` is refused here, so a prerequisite is cleared only deliberately, one task at a time) and never accepts anything on a reviewer's behalf.
+- A task that cannot be read or refreshed is reported under `failed` with its error and left unchanged; the other tasks are still processed. The command then exits with code 2 so a script cannot miss it, and the same applies to a preview that finds such a task.
+- `--note` is required. `--expected-revision` is refused, because each task has its own revision; and when `require_expected_revision` is on, `--all-stale` is refused entirely. Refresh those tasks one at a time.
+- `--actor NAME` is recorded on every event, as for a single refresh.
 
 ### Operator guidance
 

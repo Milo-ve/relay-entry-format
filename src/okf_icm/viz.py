@@ -187,6 +187,8 @@ def timeline_model(tasks, task: str) -> dict:
                 label += f" · {actor} (self-recorded)" + _ref(event.get("review") or {})
         if action == "start" and event.get("profile"):
             label += f" · {event['profile']} effort"
+        if action == "refresh" and event.get("batch"):
+            label += " · batch refresh"
         if action == "reassign" and event.get("current"):
             label += f" · reviewer {event['current'].get('reviewer')}, owner {event['current'].get('owner')}"
         if event.get("actor") and action != "review":
