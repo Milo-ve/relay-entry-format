@@ -80,6 +80,9 @@ def parser():
     submit.add_argument("--checks", required=True)
     submit.add_argument("--questions", default="")
     submit.add_argument("--next", required=True)
+    submit.add_argument("--snapshot", action="store_true",
+                        help="After validation, copy outputs and evidence byte for byte to deliverables/TASK/rREV/ and record the copies; "
+                             "later edits to the originals then no longer change the submitted version")
     submit.add_argument("--expected-revision", type=int)
     submit.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
     review = sub.add_parser("review", help="Record a local, self-attributed decision about an exact submission")
@@ -170,7 +173,7 @@ def main(argv=None):
                         result = tasks.reassign(args.task, args.note, args.owner, args.reviewer, args.expected_revision, args.actor)
                     elif args.command == "submit":
                         result = tasks.submit(args.task, args.output, args.evidence, args.checks, args.questions,
-                                              args.next, args.expected_revision, args.actor)
+                                              args.next, args.expected_revision, args.actor, snapshot=args.snapshot)
                     elif args.command == "review":
                         result = tasks.review(args.task, args.submission, args.decision, args.actor, args.note, args.expected_revision,
                                               external_ref=args.external_ref)

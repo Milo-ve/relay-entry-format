@@ -12,7 +12,7 @@ from pathlib import Path
 from . import guidance, jev, settings
 from .packets import packet_hash, section
 from .routing import route, apply_jev, PROFILES
-from .storage import ContextError, atomic_write, digest, identifier, json_text, lock, now, read_json, read_text
+from .storage import ContextError, atomic_write, digest, identifier, json_text, lock, now, read_json, read_text, readable
 from .workspace import Workspace
 
 EXPERIENCE = "Open the task. Understand its boundaries. Continue with your preferred assistant. Return reviewable work."
@@ -310,7 +310,53 @@ class Tasks:
                   current={"owner": state["owner"], "reviewer": state["reviewer"]}, **_who(actor))
         return self.status(task)
 
-    def submit(self, task, outputs, evidence, checks, questions, next_action, expected=None, actor=None):
+    def _copy_into_deliverables(self, task: str, revision: int, groups: list[list[str]], created: list[Path]) -> list[list[dict]]:
+        """Copy each file byte for byte to deliverables/TASK/rREV/ORIGINAL-PATH and return signed records.
+
+        Targets are opened exclusively, so an existing file is refused and never overwritten. Each path is
+        copied once even if it is both an output and evidence. Everything this call creates is appended to
+        `created` (files first, then the directories it had to make, deepest first) so a caller can undo it.
+        The hash comes from the bytes that were copied, so the record describes the copy exactly.
+        """
+        base = f"deliverables/{identifier(task)}/r{revision}"
+        files: list[Path] = []
+        directories: list[Path] = []
+        copies: dict[str, dict] = {}
+        try:
+            for path in dict.fromkeys(p for group in groups for p in group):
+                data = readable(self.root, path).read_bytes()
+                target = self.ws.path(f"{base}/{path}")
+                new_dirs = []
+                for directory in (target.parent, *target.parent.parents):
+                    if directory.exists() or not directory.is_relative_to(self.root):
+                        break
+                    new_dirs.append(directory)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                directories.extend(new_dirs)  # deepest first
+                try:
+                    handle = target.open("xb")
+                except FileExistsError as exc:
+                    raise ContextError(f"A snapshot already exists at {target.relative_to(self.root).as_posix()}; "
+                                       "it is never overwritten. Refresh the task, or remove that stale copy yourself.") from exc
+                files.append(target)
+                with handle:
+                    handle.write(data)
+                copies[path] = {"path": target.relative_to(self.root).as_posix(),
+                                "sha256": hashlib.sha256(data).hexdigest(), "source_path": path}
+        finally:
+            created.extend([*files, *directories])
+        return [[dict(copies[p]) for p in dict.fromkeys(group)] for group in groups]
+
+    @staticmethod
+    def _undo_copies(created: list[Path]) -> None:
+        # Files first, then directories, deepest first, so a shared parent is removed after its children.
+        for path in sorted(created, key=lambda item: (item.is_dir(), -len(item.parts))):
+            try:
+                path.rmdir() if path.is_dir() else path.unlink()
+            except OSError:
+                pass  # a directory that is not empty holds something this call did not create
+
+    def submit(self, task, outputs, evidence, checks, questions, next_action, expected=None, actor=None, snapshot=False):
         state = self.load(task)
         self.check_revision(state, expected)
         actor = _actor(actor)
@@ -324,16 +370,28 @@ class Tasks:
             resolved = self.ws.path(path)
             if resolved.is_relative_to(self.ws.home) or resolved in resolved_sources:
                 raise ContextError("Write results/evidence to separate non-control files; do not overwrite task inputs.")
-        submission = {"packet_id": state["packet_id"], "outputs": self.ws.records(outputs), "evidence": self.ws.records(evidence),
-                      "checks": _nonempty(checks, "Checks performed"), "open_questions": questions,
-                      "next_action": _nonempty(next_action, "Next action"), "at": now()}
-        submission["submission_id"] = hashlib.sha256(json.dumps(submission, sort_keys=True).encode()).hexdigest()
-        receipt = self.home(task) / "submissions" / f"{submission['submission_id']}.json"
-        if not receipt.exists():
-            atomic_write(receipt, json_text(submission), exclusive=True)
-        state["submission"] = submission
-        state["review"] = None
-        self.save(state, "submit", submission_id=submission["submission_id"], **_who(actor))
+        # Everything is validated here, before any copy is made.
+        output_records, evidence_records = self.ws.records(outputs), self.ws.records(evidence)
+        checks, next_action = _nonempty(checks, "Checks performed"), _nonempty(next_action, "Next action")
+        created: list[Path] = []
+        try:
+            if snapshot:
+                output_records, evidence_records = self._copy_into_deliverables(
+                    task, state["revision"], [outputs, evidence], created)
+            submission = {"packet_id": state["packet_id"], "outputs": output_records, "evidence": evidence_records,
+                          "checks": checks, "open_questions": questions, "next_action": next_action, "at": now()}
+            if snapshot:
+                submission["snapshot"] = True
+            submission["submission_id"] = hashlib.sha256(json.dumps(submission, sort_keys=True).encode()).hexdigest()
+            receipt = self.home(task) / "submissions" / f"{submission['submission_id']}.json"
+            if not receipt.exists():
+                atomic_write(receipt, json_text(submission), exclusive=True)
+            state["submission"] = submission
+            state["review"] = None
+            self.save(state, "submit", submission_id=submission["submission_id"], **_who(actor))
+        except BaseException:
+            self._undo_copies(created)
+            raise
         return self.status(task)
 
     def review(self, task, submission_id, decision, actor, note, expected=None, external_ref=None):
