@@ -105,12 +105,12 @@ def handler(tasks):
                     source_items = "".join(f'<li>{esc(x["path"])} <span class="muted">({esc(x["role"])})</span></li>' for x in tasks.packet(tasks.load(task))["files"])
                     acceptance = "".join(f'<li>{esc(x)}</li>' for x in s["acceptance"])
                     changed = f'<div class="error" role="alert">Review needed: {esc(", ".join(s["changed"]))}. Refresh the context and reassess affected work.</div>' if s["changed"] else ""
-                    submit = field("result", "Your deliverable", textarea=True) + field("evidence", "Actual evidence / observed results", textarea=True) + field("checks", "What did you check?", textarea=True) + field("questions", "Open questions", textarea=True, required=False) + field("next", "Next action", "Review this submission against the acceptance criteria.") + '<button>Return reviewable work</button>'
+                    submit = field("result", "Your deliverable", textarea=True) + field("evidence", "Actual evidence / observed results", textarea=True) + field("checks", "What did you check?", textarea=True) + field("questions", "Open questions", textarea=True, required=False) + field("next", "Next action", "Review this submission against the acceptance criteria.") + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Return reviewable work</button>'
                     review = '<p>Return a result before recording a review.</p>'
                     if s["submission"]:
                         review = self.form(f"/review/{task}", f'<input type="hidden" name="submission" value="{esc(s["submission"]["submission_id"])}">' + field("actor", "Reviewer (self-recorded)", s["reviewer"]) + field("note", "Review rationale", textarea=True) + '<label for="decision">Decision</label><select name="decision" id="decision"><option value="accept">Accept this version</option><option value="request_changes">Request changes</option></select><button>Record review</button>', rev)
-                    operations = self.form(f"/refresh/{task}", field("note", "What changed or was resolved?", textarea=True) + '<label><input type="checkbox" name="resolve" value="yes"> I resolved the listed prerequisites</label><button>Refresh context</button>', rev)
-                    escalation = self.form(f"/escalate/{task}", field("note", "Evidence requiring more effort", textarea=True) + '<button>Escalate effort</button>', rev)
+                    operations = self.form(f"/refresh/{task}", field("note", "What changed or was resolved?", textarea=True) + '<label><input type="checkbox" name="resolve" value="yes"> I resolved the listed prerequisites</label>' + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Refresh context</button>', rev)
+                    escalation = self.form(f"/escalate/{task}", field("note", "Evidence requiring more effort", textarea=True) + field("actor", "Your name (optional, self-recorded)", required=False) + '<button>Escalate effort</button>', rev)
                     self.page(s["goal"], f'<a href="/">← All tasks</a><h1>{esc(s["goal"])}</h1>{changed}<span class="badge">{esc(s["status"])}</span><span class="badge">{esc(s["route"]["profile"])} effort</span><span class="badge">Sources: {esc(s["freshness"])}</span><div class="grid"><section class="panel"><h2>Understand the boundaries</h2><p>{esc(s["boundaries"])}</p><p>Owner: {esc(s["owner"])} · Reviewer: {esc(s["reviewer"])}</p><h3>Acceptance</h3><ul>{acceptance}</ul><h3>Selected sources</h3><ul>{source_items}</ul><p>Blockers: {esc("; ".join(s["blockers"]) or "None recorded")}</p><a class="button" href="/packet/{task}">Download assistant context</a><details><summary>Effort decision</summary><pre>{esc(json_text(s["route"]))}</pre></details></section><section class="panel"><h2>Return reviewable work</h2><p class="muted">The text below is saved as versioned result and evidence files. Describe checks you actually performed.</p>{self.form(f"/submit/{task}", submit, rev)}</section><section class="panel"><h2>Review this version</h2>{review}<details><summary>Submission and review record</summary><pre>{esc(json_text({"submission":s["submission"],"review":s["review"]}))}</pre></details></section><section class="panel"><h2>Adapt to new evidence</h2>{operations}<details><summary>Need more effort?</summary>{escalation}</details></section><section class="panel wide"><h2>History of this task</h2>{timeline_section(tasks, task)}</section></div>')
                 else:
                     self.page("Not found", '<h1>Page not found</h1><a href="/">Return to tasks</a>', 404)
@@ -152,11 +152,13 @@ def handler(tasks):
                                     raise ContextError("Result path exists. Use CLI with new output paths or refresh the task.")
                             for relative, value in zip(paths, (data["result"], data["evidence"])):
                                 atomic_write(tasks.ws.path(relative), value, exclusive=True)
-                            tasks.submit(task, [paths[0]], [paths[1]], data["checks"], data.get("questions", ""), data["next"], revision)
+                            tasks.submit(task, [paths[0]], [paths[1]], data["checks"], data.get("questions", ""), data["next"], revision,
+                                         actor=data.get("actor", "").strip() or None)
                         elif action == "review":
                             tasks.review(task, data["submission"], data["decision"], data["actor"], data["note"], revision)
                         elif action in {"refresh", "escalate"}:
-                            tasks.refresh(task, data["note"], revision, resolve=data.get("resolve") == "yes", escalate=action == "escalate")
+                            tasks.refresh(task, data["note"], revision, resolve=data.get("resolve") == "yes", escalate=action == "escalate",
+                                         actor=data.get("actor", "").strip() or None)
                         else:
                             raise ContextError("Unknown operation.")
                 self.send_response(303)

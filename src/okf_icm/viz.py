@@ -164,8 +164,9 @@ def bundle_section(ws) -> str:
 
 # --------------------------------------------------------------- task timeline
 
-_LABELS = {"start": "Task opened", "refresh": "Context refreshed", "escalate": "Effort escalated", "submit": "Work returned"}
-_RESET = {"start", "refresh", "escalate"}
+_LABELS = {"start": "Task opened", "refresh": "Context refreshed", "escalate": "Effort escalated", "submit": "Work returned",
+           "reassign": "Owner or reviewer reassigned"}
+_RESET = {"start", "refresh", "escalate", "reassign"}
 
 
 def timeline_model(tasks, task: str) -> dict:
@@ -186,6 +187,10 @@ def timeline_model(tasks, task: str) -> dict:
                 label += f" · {actor} (self-recorded)"
         if action == "start" and event.get("profile"):
             label += f" · {event['profile']} effort"
+        if action == "reassign" and event.get("current"):
+            label += f" · reviewer {event['current'].get('reviewer')}, owner {event['current'].get('owner')}"
+        if event.get("actor") and action != "review":
+            label += f" · {event['actor']} (self-recorded)"
         rows.append({"kind": kind, "label": label, "at": event.get("at", ""), "current": i >= boundary})
     return {"id": task, "goal": status["goal"], "status": status, "events": rows, "packets": len(state["packets"])}
 
@@ -210,7 +215,7 @@ def strip(model: dict) -> str:
 
 
 def _marker(kind: str, x: float, y: float) -> str:
-    if kind == "refresh":
+    if kind in {"refresh", "reassign"}:
         return f'<polygon class="ev" points="{x:.0f},{y - 10} {x + 10:.0f},{y} {x:.0f},{y + 10} {x - 10:.0f},{y}"/>'
     if kind == "escalate":
         return f'<polygon class="ev" points="{x:.0f},{y - 10} {x + 10:.0f},{y + 9} {x - 10:.0f},{y + 9}"/>'

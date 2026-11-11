@@ -26,6 +26,20 @@ def _nonempty(value: str, field: str) -> str:
     return value.strip()
 
 
+def _actor(value) -> str | None:
+    """Optional self-recorded name for an event. Never authenticated, never required."""
+    if value is None:
+        return None
+    value = _nonempty(value, "Actor")
+    if len(value) > 80 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ContextError("Actor must be at most 80 characters, without control characters.")
+    return value
+
+
+def _who(actor: str | None) -> dict:
+    return {"actor": actor} if actor else {}
+
+
 class Tasks:
     def __init__(self, root: Path):
         self.ws = Workspace(root)
@@ -99,7 +113,8 @@ class Tasks:
 
     def start(self, task: str, goal: str, acceptance: list[str], selections=None, kind="auto", risk="standard",
               owner="local-operator", reviewer="local-reviewer", blockers=None, boundaries="Propose changes; no publishing or external actions.",
-              review_required=True, jev_mode="off", max_chars=32000) -> dict:
+              review_required=True, jev_mode="off", max_chars=32000, actor=None) -> dict:
+        actor = _actor(actor)
         if self.home(task).exists():
             raise ContextError("Task exists. Choose another ID; existing work is never overwritten.")
         if not acceptance:
@@ -123,7 +138,7 @@ class Tasks:
             self.ensure_budget(packet, max_chars)
         self.home(task).mkdir(parents=True)
         self.persist_packet(state, packet)
-        self.save(state, "start", profile=packet["route"]["profile"])
+        self.save(state, "start", profile=packet["route"]["profile"], **_who(actor))
         return self.status(task)
 
     @staticmethod
@@ -215,15 +230,8 @@ class Tasks:
                 "Return the deliverable, actual checks, uncertainties, and next action. Never invent approval or executed checks.\n\n"
                 + json_text(packet))
 
-    def refresh(self, task, note, expected=None, resolve=False, escalate=False):
-        state = self.load(task)
-        self.check_revision(state, expected)
-        note = _nonempty(note, "Refresh/escalation note")
-        old = self.packet(state)
-        if escalate and (old["route"]["profile"] in {"clarify", "investigative"} or state["escalations"] >= 1):
-            raise ContextError("Escalation unavailable. Reassess scope or resolve the missing prerequisite.")
-        if resolve:
-            state["blockers"] = []
+    def _resnapshot(self, state, escalate=False):
+        """Take a new packet from current sources and clear the submission and review. Caller saves."""
         # Explicit refresh returns to rules; old Jev observations must not be reused on new state.
         packet = self.snapshot(state)
         if escalate or state["escalations"]:
@@ -235,14 +243,50 @@ class Tasks:
         self.persist_packet(state, packet)
         state["submission"] = None
         state["review"] = None
-        if escalate:
-            state["escalations"] += 1
-        self.save(state, "escalate" if escalate else "refresh", note=note, resolved_by_operator=resolve)
-        return self.status(task)
 
-    def submit(self, task, outputs, evidence, checks, questions, next_action, expected=None):
+    def refresh(self, task, note, expected=None, resolve=False, escalate=False, actor=None):
         state = self.load(task)
         self.check_revision(state, expected)
+        note = _nonempty(note, "Refresh/escalation note")
+        actor = _actor(actor)
+        old = self.packet(state)
+        if escalate and (old["route"]["profile"] in {"clarify", "investigative"} or state["escalations"] >= 1):
+            raise ContextError("Escalation unavailable. Reassess scope or resolve the missing prerequisite.")
+        if resolve:
+            state["blockers"] = []
+        self._resnapshot(state, escalate)
+        if escalate:
+            state["escalations"] += 1
+        self.save(state, "escalate" if escalate else "refresh", note=note, resolved_by_operator=resolve, **_who(actor))
+        return self.status(task)
+
+    def reassign(self, task, note, owner=None, reviewer=None, expected=None, actor=None):
+        """Change the owner and/or reviewer. They are part of the frozen brief, so this takes a new
+        snapshot and clears the current submission and review: a review bound to the earlier
+        assignment must not survive. Refused while inputs have changed (refresh first)."""
+        state = self.load(task)
+        self.check_revision(state, expected)
+        note, actor = _nonempty(note, "Reassignment note"), _actor(actor)
+        owner = _nonempty(owner, "Owner") if owner is not None else None
+        reviewer = _nonempty(reviewer, "Reviewer") if reviewer is not None else None
+        if owner is None and reviewer is None:
+            raise ContextError("Give a new owner, a new reviewer, or both.")
+        if (owner in (None, state["owner"])) and (reviewer in (None, state["reviewer"])):
+            raise ContextError("The task already has that owner and reviewer.")
+        changed = self.status(task)["changed"]
+        if changed:
+            raise ContextError("Inputs changed: " + guidance.listed(changed) + ". Refresh the task before reassigning it.")
+        before = {"owner": state["owner"], "reviewer": state["reviewer"]}
+        state["owner"], state["reviewer"] = owner or state["owner"], reviewer or state["reviewer"]
+        self._resnapshot(state)
+        self.save(state, "reassign", note=note, previous=before,
+                  current={"owner": state["owner"], "reviewer": state["reviewer"]}, **_who(actor))
+        return self.status(task)
+
+    def submit(self, task, outputs, evidence, checks, questions, next_action, expected=None, actor=None):
+        state = self.load(task)
+        self.check_revision(state, expected)
+        actor = _actor(actor)
         if self.status(task)["changed"] or state["blockers"]:
             raise ContextError("Inputs changed or prerequisites unresolved. Refresh or resolve before submitting.")
         if not outputs or not evidence:
@@ -262,7 +306,7 @@ class Tasks:
             atomic_write(receipt, json_text(submission), exclusive=True)
         state["submission"] = submission
         state["review"] = None
-        self.save(state, "submit", submission_id=submission["submission_id"])
+        self.save(state, "submit", submission_id=submission["submission_id"], **_who(actor))
         return self.status(task)
 
     def review(self, task, submission_id, decision, actor, note, expected=None):

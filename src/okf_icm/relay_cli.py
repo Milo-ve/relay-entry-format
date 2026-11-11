@@ -46,6 +46,7 @@ def parser():
     start.add_argument("--jev", choices=("off", "shadow", "route"), default="off",
                        help="Explicitly send goal and selected non-control sources to TypeSafe; never enables tool execution")
     start.add_argument("--max-chars", type=int, default=32000)
+    start.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
     sub.add_parser("list", help="List tasks with current freshness and acceptance")
     show = sub.add_parser("show")
     show.add_argument("task")
@@ -57,8 +58,16 @@ def parser():
         item.add_argument("task")
         item.add_argument("--note", required=True)
         item.add_argument("--expected-revision", type=int)
+        item.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
         if command == "refresh":
             item.add_argument("--resolve", action="store_true", help="Record that the operator resolved listed prerequisites")
+    reassign = sub.add_parser("reassign", help="Change owner and/or reviewer; takes a new snapshot and clears the current submission and review")
+    reassign.add_argument("task")
+    reassign.add_argument("--owner")
+    reassign.add_argument("--reviewer")
+    reassign.add_argument("--note", required=True)
+    reassign.add_argument("--expected-revision", type=int)
+    reassign.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
     submit = sub.add_parser("submit")
     submit.add_argument("task")
     submit.add_argument("--output", action="append", required=True)
@@ -67,6 +76,7 @@ def parser():
     submit.add_argument("--questions", default="")
     submit.add_argument("--next", required=True)
     submit.add_argument("--expected-revision", type=int)
+    submit.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
     review = sub.add_parser("review", help="Record a local, self-attributed decision about an exact submission")
     review.add_argument("task")
     review.add_argument("--submission", required=True)
@@ -143,13 +153,16 @@ def main(argv=None):
                     if args.command == "start":
                         result = tasks.start(args.task, args.goal, args.accept, args.select, args.kind, args.risk,
                                              args.owner, args.reviewer, args.blocker, args.boundaries,
-                                             jev_mode=args.jev, max_chars=args.max_chars)
+                                             jev_mode=args.jev, max_chars=args.max_chars, actor=args.actor)
                     elif args.command in {"refresh", "escalate"}:
                         result = tasks.refresh(args.task, args.note, args.expected_revision,
-                                               resolve=getattr(args, "resolve", False), escalate=args.command == "escalate")
+                                               resolve=getattr(args, "resolve", False), escalate=args.command == "escalate",
+                                               actor=args.actor)
+                    elif args.command == "reassign":
+                        result = tasks.reassign(args.task, args.note, args.owner, args.reviewer, args.expected_revision, args.actor)
                     elif args.command == "submit":
                         result = tasks.submit(args.task, args.output, args.evidence, args.checks, args.questions,
-                                              args.next, args.expected_revision)
+                                              args.next, args.expected_revision, args.actor)
                     elif args.command == "review":
                         result = tasks.review(args.task, args.submission, args.decision, args.actor, args.note, args.expected_revision)
                     else:

@@ -90,5 +90,15 @@ class WebCase(unittest.TestCase):
         self.assertFalse((self.root / "deliverables").exists())
 
 
+    def test_optional_name_is_recorded_only_when_typed(self):
+        html = self.start()
+        self.assertIn('name="actor"', html)
+        token = self.token(html)
+        self.assertEqual(self.request("POST", "/refresh/faq", {"csrf": token, "revision": "1", "note": "Anonymous", "actor": "  "})[0], 303)
+        self.assertEqual(self.request("POST", "/refresh/faq", {"csrf": token, "revision": "2", "note": "Named", "actor": " ana "})[0], 303)
+        events = self.tasks.load("faq")["events"]
+        self.assertNotIn("actor", events[-2])
+        self.assertEqual(events[-1]["actor"], "ana")
+
 if __name__ == "__main__":
     unittest.main()

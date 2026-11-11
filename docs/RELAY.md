@@ -26,8 +26,11 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `review ID`              | Record a decision for the exact current submission and assigned reviewer name.                                |
 | `refresh ID`             | Snapshot current sources and clear the current submission and acceptance; retain history.                     |
 | `escalate ID`            | Explicitly increase effort to Investigative, with a reason and a one-escalation limit.                        |
+| `reassign ID`            | Change the owner and/or reviewer with a note. Owner and reviewer are part of the frozen packet brief, so this takes a new snapshot and clears the current submission and review; history is kept. Refused while inputs are changed or if nothing would change. |
 | `serve`                  | Serve the local forms and packet downloads on 127.0.0.1.                                                      |
 | `export-html --out FILE` | Write a self-contained, script-free snapshot of the knowledge map and every task's history. Never overwrites. |
+
+`start`, `submit`, `refresh`, `escalate` and `reassign` accept an optional `--actor NAME`, stored on the event only when given (at most 80 characters, no control characters). It is a self-recorded label for the history, like the reviewer name: it is not authentication and is never required. Events written before it existed load and display unchanged.
 
 ### Operator guidance
 

@@ -78,6 +78,14 @@ Once a version is accepted, editing its result, its evidence or a source returns
 **`Escalation unavailable. Reassess scope or resolve the missing prerequisite.`**
 A task allows one escalation, to Investigative. Either it is already used, or the route is Clarify or Investigative. Reassess the scope, or start a new task with the right route.
 
+### Why can't I reassign?
+
+**`Inputs changed: ... Refresh the task before reassigning it.`**
+Reassigning takes a new snapshot, so it would silently accept the changed sources. Run `relay refresh TASK --note "..."` first.
+
+**`The task already has that owner and reviewer.`** / **`Give a new owner, a new reviewer, or both.`**
+Nothing would change, so nothing was recorded. Reassigning clears the current submission and acceptance, because a review is bound to the reviewer named in the packet; submit again for the new reviewer.
+
 ### Why does any command stop?
 
 **`Task changed. Reload its current version before submitting this action.`**
