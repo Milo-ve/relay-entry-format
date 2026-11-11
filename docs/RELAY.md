@@ -20,7 +20,7 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
-| `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`.                                |
+| `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
 | `submit ID`              | Bind separate result and evidence files to the current packet.                                                |
 | `review ID`              | Record a decision for the exact current submission and assigned reviewer name.                                |

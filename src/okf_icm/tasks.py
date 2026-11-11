@@ -223,6 +223,12 @@ class Tasks:
         folder = self.ws.path(".context/relay/tasks")
         return [self.status(p.parent.name) for p in sorted(folder.glob("*/state.json"))] if folder.exists() else []
 
+    @staticmethod
+    def brief(statuses: list[dict]) -> list[dict]:
+        """One small record per task, for orientation. `show` has the full detail."""
+        keys = ("id", "status", "freshness", "owner", "reviewer", "revision")
+        return [{key: item[key] for key in keys} for item in statuses]
+
     def context(self, task):
         state = self.load(task)
         status = self.status(task)

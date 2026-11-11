@@ -47,7 +47,9 @@ def parser():
                        help="Explicitly send goal and selected non-control sources to TypeSafe; never enables tool execution")
     start.add_argument("--max-chars", type=int, default=32000)
     start.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
-    sub.add_parser("list", help="List tasks with current freshness and acceptance")
+    listing = sub.add_parser("list", help="List tasks with current freshness and acceptance")
+    listing.add_argument("--brief", action="store_true",
+                         help="Only id, status, freshness, owner, reviewer and revision; use `show` for detail")
     show = sub.add_parser("show")
     show.add_argument("task")
     ctx = sub.add_parser("context", help="Export the current portable work packet")
@@ -136,6 +138,8 @@ def main(argv=None):
                 return 0
             if args.command == "list":
                 result = tasks.list()
+                if args.brief:
+                    result = tasks.brief(result)
             elif args.command == "show":
                 result = tasks.status(args.task)
             elif args.command == "context":
