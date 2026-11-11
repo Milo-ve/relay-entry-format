@@ -66,7 +66,7 @@ A result or evidence path is one of the selected inputs, or is under `.context`.
 ### Why can't I record a review?
 
 **`Actor must match the assigned reviewer. This is a local assertion, not authenticated identity.`**
-`--actor` differs from the reviewer set at `start`. Use the assigned name. There is no command to change reviewers; start a new task if the reviewer must change.
+`--actor` differs from the reviewer set at `start`. Use the assigned name. To change the reviewer, run `relay reassign TASK --reviewer NAME --note "..."`; that takes a new snapshot and clears the current submission, so submit again afterwards.
 
 **`Review must identify the current submission and a valid decision.`**
 The `--submission` value is not the current `submission_id`, for example after a resubmit. Copy it from `relay show TASK`. The earlier receipt remains under `submissions/`.
