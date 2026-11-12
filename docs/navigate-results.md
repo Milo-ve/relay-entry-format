@@ -94,8 +94,12 @@ has been left unchanged in accordance with the stop-on-failure rule.
   review, changed source and refresh.
 - `git diff --check`: **passed**. Frozen fixture files unchanged.
 
-Checks used the existing local virtual environment's Python, with this worktree's
-`src` on `PYTHONPATH`; the shell did not have a bare `python` executable.
+The integration rerun exported all committed files with `git archive` to a fresh
+temporary directory, then ran the full suite, both smoke examples and both fixture
+evaluations there. Checks used the existing local virtual environment's Python,
+with the export's absolute `src` on `PYTHONPATH`; the shell did not have a bare
+`python` executable. The clean export reproduced the measurements above and the
+held-out evaluator's exit code 1.
 The integration check also exercises CLI suggestions passed explicitly to `start`
 and `context`, then changes text outside the selected section and confirms the
 full-file hash still makes the task need review. The CLI prints an experimental
