@@ -398,6 +398,19 @@ _PAIRS: dict[str, tuple[str, str]] = {
                            "Señales registradas: ciclo de vida {lifecycle}, vigencia {freshness}, confianza {trust}. Verifícalo y actualízalo, o retíralo."),
     "tidy.invalid_concept": ("The knowledge metadata is invalid. Fix it or move the file out of the knowledge folder.",
                              "Los metadatos de conocimiento no son válidos. Corrígelos o saca el archivo de la carpeta de conocimiento."),
+    "tidy.applied": ("Tidied: {removed} duplicate file(s) removed, {archived} unlinked file(s) archived, {links} link(s) updated in {rewritten} file(s). "
+                     "Everything is backed up; undo with: relay tidy --undo {run}",
+                     "Ordenado: {removed} archivo(s) duplicado(s) retirado(s), {archived} archivo(s) sin enlaces archivado(s), {links} enlace(s) actualizado(s) en {rewritten} archivo(s). "
+                     "Todo tiene copia de seguridad; para deshacer: relay tidy --undo {run}"),
+    "tidy.dry_run": ("Dry run: this is what would be done. Nothing was changed.",
+                     "Simulacro: esto es lo que se haría. No se cambió nada."),
+    "tidy.nothing_to_apply": ("Nothing safe to tidy automatically.", "No hay nada que ordenar de forma automática y segura."),
+    "tidy.rolled_back": ("The run would have left more broken links than it found, so it was undone and nothing changed.",
+                         "La ejecución habría dejado más enlaces rotos de los que había, así que se deshizo y no cambió nada."),
+    "tidy.undone": ("Undone run {run}: {restored} file(s) restored, {conflicts} left as they are because they changed since.",
+                    "Se deshizo la ejecución {run}: {restored} archivo(s) restaurado(s), {conflicts} se dejaron como están porque cambiaron desde entonces."),
+    "tidy.left": ("Left for a person: sections that overlap, oversized entry files, invalid or stale concepts, and anything skipped above.",
+                  "Para una persona: secciones que se solapan, archivos de entrada demasiado grandes, conceptos inválidos u obsoletos y lo omitido arriba."),
 
 }
 

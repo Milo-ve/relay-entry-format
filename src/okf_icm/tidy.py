@@ -65,6 +65,16 @@ def _markdown_files(root: Path, scope: list[str], deny: list[str]) -> list[str]:
     return sorted(found)
 
 
+def resolve_scope(root: Path, scope: list[str] | None) -> list[str]:
+    """The folders to scan: those named, else the knowledge bundle."""
+    scope = [Path(value).as_posix() for value in (scope or [])]
+    if not scope:
+        if not (root / BUNDLE).is_dir():
+            raise ContextError(f"No {BUNDLE} here; name a folder to scan with --path.")
+        scope = [BUNDLE]
+    return scope
+
+
 def _normal(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.replace("\r\n", "\n").split("\n")).strip()
 
@@ -148,11 +158,7 @@ def scan(root: Path, scope: list[str] | None = None, *, deny: list[str] | None =
     root, deny, t = root.resolve(), list(deny or []), translator(language)
     if not root.is_dir():
         raise ContextError("The project root must be an existing folder.")
-    scope = [Path(value).as_posix() for value in (scope or [])]
-    if not scope:
-        if not (root / BUNDLE).is_dir():
-            raise ContextError(f"No {BUNDLE} here; name a folder to scan with --path.")
-        scope = [BUNDLE]
+    scope = resolve_scope(root, scope)
     paths = _markdown_files(root, scope, deny)
     texts, unreadable = {}, []
     for relative in paths:

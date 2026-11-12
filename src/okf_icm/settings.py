@@ -16,8 +16,11 @@ RELATIVE = ".context/relay/settings.json"
 JEV_MODES = ("off", "shadow", "auto")
 JEV_USES = ("route", "source-scan", "evaluate", "rerank", "dedupe")
 MAX_JEV_CALLS = 50
+TIDY_ACTIONS = ("duplicate-file", "broken-link", "orphan")
+MAX_ORPHAN_DAYS = 3650
 DEFAULTS = {"lock_wait_seconds": 5.0, "require_expected_revision": False, "deny_paths": [], "language": "en",
-            "jev_mode": "off", "jev_uses": ["route"], "jev_max_calls": 5}
+            "jev_mode": "off", "jev_uses": ["route"], "jev_max_calls": 5,
+            "tidy_actions": list(TIDY_ACTIONS), "tidy_orphan_days": 30}
 MAX_WAIT = 300.0
 MAX_PATTERNS = 100
 MAX_PATTERN_LENGTH = 200
@@ -55,6 +58,15 @@ def _check(key: str, value):
     if key == "jev_max_calls":
         if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_JEV_CALLS:
             raise ContextError(f"{RELATIVE}: jev_max_calls must be a whole number from 0 to {MAX_JEV_CALLS}.")
+        return value
+    if key == "tidy_actions":
+        if not isinstance(value, list) or len(set(map(str, value))) != len(value) or not all(x in TIDY_ACTIONS for x in value):
+            raise ContextError(f"{RELATIVE}: tidy_actions must be a list without repeats drawn from {', '.join(TIDY_ACTIONS)}.")
+        return list(value)
+    if key == "tidy_orphan_days":
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_ORPHAN_DAYS:
+            raise ContextError(f"{RELATIVE}: tidy_orphan_days must be a whole number from 0 to {MAX_ORPHAN_DAYS} "
+                               "(0 never moves unlinked files).")
         return value
     raise ContextError(f"{RELATIVE}: unknown setting '{key}'. Known settings: {', '.join(DEFAULTS)}.")
 

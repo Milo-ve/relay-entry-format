@@ -23,11 +23,15 @@ def parser():
     nav.add_argument("--stage", help="Prioritize knowledge paths named in this stage contract's Inputs section")
     nav.add_argument("--max-chars", type=int, default=12000, help="Source task-packet characters (controls extra; default 12000)")
     nav.add_argument("--limit", type=int, default=8, help="Maximum candidates and displayed omissions, 1-100 (default 8)")
-    tidy = sub.add_parser("tidy", help="Read-only clutter report: duplicates, unlinked files, broken links, oversized entry files. Suggests; changes nothing")
+    tidy = sub.add_parser("tidy", help="Clutter report: duplicates, unlinked files, broken links, oversized entry files. Reads only, unless --apply or --undo is given")
     tidy.add_argument("--path", action="append", default=[],
                       help="Folder or Markdown file to scan, relative to --root (repeatable). Default: .context/knowledge")
     tidy.add_argument("--brief", action="store_true", help="Only kind, paths and suggestion for each finding")
     tidy.add_argument("--out", type=Path, help="New Markdown note outside .context; an existing file is never overwritten")
+    tidy.add_argument("--apply", action="store_true",
+                      help="Do the safe cleanups now: remove identical files, archive long-unlinked files, repair unambiguous links. Backed up; undo with --undo")
+    tidy.add_argument("--dry-run", action="store_true", help="With --apply: show what would be done and change nothing")
+    tidy.add_argument("--undo", metavar="RUN", help="Restore everything a previous --apply changed: a run id, or 'latest'")
     init = sub.add_parser("init", help="Initialize a project without overwriting existing state")
     init.add_argument("path", type=Path, nargs="?")
     init.add_argument("--name", default="Relay project")
@@ -166,8 +170,17 @@ def main(argv=None):
             result = adapt_workspace(args.root, args.name, apply=args.apply, claude=args.claude, minimal=args.minimal)
         elif args.command == "tidy":
             # No workspace is required: a plain folder of Markdown can be inspected too.
-            from . import tidy
-            result = tidy.run(args.root, args.path, brief_only=args.brief, out=args.out)
+            from . import tidy, tidy_apply
+            if args.dry_run and not args.apply:
+                raise ContextError("--dry-run needs --apply.")
+            if (args.apply or args.undo) and (args.out or args.brief or (args.apply and args.undo)):
+                raise ContextError("--apply and --undo take no --out or --brief, and cannot be combined.")
+            if args.undo:
+                result = tidy_apply.undo(args.root, args.undo)
+            elif args.apply:
+                result = tidy_apply.apply(args.root, args.path, dry_run=args.dry_run)
+            else:
+                result = tidy.run(args.root, args.path, brief_only=args.brief, out=args.out)
         else:
             tasks = Tasks(args.root)
             if args.command == "serve":
