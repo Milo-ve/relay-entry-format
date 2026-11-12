@@ -85,7 +85,7 @@ has been left unchanged in accordance with the stop-on-failure rule.
 
 ## Regression checks
 
-- `python -m unittest discover -s tests -v`: **257 passed**, including 13 new navigation
+- `python -m unittest discover -s tests -v`: **258 passed**, including 13 new navigation
   tests and the existing legacy state/packet compatibility tests. The existing loopback
   HTTP tests required execution outside the restricted network sandbox.
 - `python examples/smoke.py`: **passed**, installed CLI, six stages, evidence, promotion,
