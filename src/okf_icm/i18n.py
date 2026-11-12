@@ -368,6 +368,9 @@ _PAIRS: dict[str, tuple[str, str]] = {
     "nav.index": ("{count} permitted concept(s) are absent from their local index; navigation reads concepts directly.",
                   "{count} concepto(s) permitido(s) no aparecen en su índice local; la navegación lee los conceptos directamente."),
 
+    "nav.jev_no_support": ("Jev judged no candidate relevant to the goal; coverage may be missing. This is a signal, not a verification.",
+                           "Jev no consideró pertinente ningún candidato para el objetivo; puede faltar cobertura. Es una señal, no una verificación."),
+
     # ---------------------------------------------------------------- tidy report
     "tidy.title": ("Tidy report", "Informe de orden"),
     "tidy.note": ("Suggestions only. Nothing was changed, moved or deleted.",
