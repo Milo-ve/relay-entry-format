@@ -23,4 +23,4 @@ Rules:
 - Use synthetic fixtures. Live model results and user savings require separate observed evidence.
 - Local `.context`, private packets, API keys, virtual environments, and generated deliverables must stay out of public Git history.
 - This is a loopback trusted-user prototype; do not claim organizational authorization or managed compute enforcement.
-- After changing docs, run `relay --root . tidy --path docs --brief` and act on it. A new doc needs a line in `docs/INDEX.md`; `tests/test_docs_index.py` enforces both and this file's size.
+- After changing docs, run `relay --root . tidy --path docs --apply` and act on the rest. A new doc needs a line in `docs/INDEX.md`; `tests/test_docs_index.py` enforces both and this file's size.

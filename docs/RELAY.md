@@ -25,7 +25,8 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
 | `navigate GOAL [--stage ID] [--max-chars N] [--limit N]` | Experimental read-only knowledge-source suggestions; review before explicit selection. See [Navigation](#navigation-experimental). |
-| `tidy [--path DIR] [--brief] [--out FILE]` | Read-only clutter report: duplicates, unlinked files, broken links, oversized entry files. Suggests; changes nothing. See [Tidy](#tidy). |
+| `tidy [--path DIR] [--brief] [--out FILE]` | Read-only clutter report: duplicates, unlinked files, broken links, oversized entry files. See [Tidy](#tidy). |
+| `tidy --apply [--dry-run]`, `tidy --undo RUN` | Do the safe cleanups without per-file approval, backed up; restore a whole run. See [Tidy](#tidy). |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. `list --stale` keeps only tasks whose inputs changed since their snapshot and combines with `--brief`; it adds a one-line hint on stderr, so the JSON on stdout is unchanged. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -198,7 +199,27 @@ and never treats suggestions as a completed packet or an answered question.
 
 ## Tidy
 
-`relay --root PROJECT tidy` reports clutter and suggests what to do about it. It reads only: it changes, moves and deletes nothing and takes no lock. It calls no model unless the workspace enabled the `dedupe` use (see [Jev](JEV.md)), which asks about sections that overlap between 50% and 80%. A person or assistant applies the suggestions, with version control as the undo. There is no `--apply`.
+`relay --root PROJECT tidy` reports clutter and suggests what to do about it. On its own it reads only: it changes, moves and deletes nothing and takes no lock. It calls no model unless the workspace enabled the `dedupe` use (see [Jev](JEV.md)), which asks about sections that overlap between 50% and 80%.
+
+`relay --root PROJECT tidy --apply` then does the part that needs no judgment, in one run and without asking about each file. `--dry-run` shows what it would do. It never contacts a model.
+
+| Cleanup                          | What it does                                                                                           | Never when                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Identical files (`duplicate-file`) | Removes the redundant copy and points every link at the file kept                                      | The file is named by path in project controls or task state, is an entry file or an index, or the kept file changed since read |
+| Unlinked files (`orphan`)        | Moves the file to an `archive/` folder beside it and re-spells its own relative links                  | It changed in the last `tidy_orphan_days` days (default 30), has uncommitted Git changes, is a knowledge concept, or the archive name is taken |
+| Broken links (`broken-link`)     | Repairs the link when exactly one scanned file has that name                                           | Zero or several files match                                                                                                 |
+
+Everything else (`duplicate-section`, `oversize-entry`, `invalid-concept`, `review-signal`) needs a reader and stays in the report. Section overlap is lexical, so two sections can share words and still disagree.
+
+What makes this safe to run unattended:
+
+- **Backup first.** Every original it will touch is copied to `.relay-backups/tidy-<time>-<id>/files` and a manifest is written before the first change. `.relay-backups` is already git-ignored by `workspace`.
+- **All or nothing.** Nothing changes unless every file is still exactly what was read. If anything fails, or the run would leave more broken links than it found, it undoes itself.
+- **`relay tidy --undo RUN`** (or `latest`) restores the whole run. A file edited since the run is left as it is and listed as a conflict, never overwritten. A run can be undone once; the backup stays.
+- **Scoped by settings.** `tidy_actions` (default all three) and `tidy_orphan_days` (default 30; 0 never archives unlinked files) in `.context/relay/settings.json`. `deny_paths` and the secret-path rules apply as for the report.
+- It runs under the workspace write lock when `.context` exists.
+
+Limits: it moves and rewrites Markdown only. It finds references by link or by a full relative path in `.context`; a file mentioned some other way, such as a bare name in prose, can be archived and leave that mention stale. The archive is a folder, not a deletion; nothing is ever deleted outside the backup. The run applies the rules above; it does not judge whether a document is still valuable, which is why it waits out `tidy_orphan_days` and skips uncommitted work.
 
 Without `--path` it scans `.context/knowledge`. `--path DIR` (repeatable, relative to `--root`) scans any folder or Markdown file, and needs no workspace, so a plain folder of notes can be checked. Only `.md` files are read.
 
@@ -216,7 +237,7 @@ Without `--path` it scans `.context/knowledge`. `--path DIR` (repeatable, relati
 
 `deny_paths` and the common secret-path rules apply: excluded files are not read, not counted and not named, including as link targets. Naming an excluded folder in `--path` is refused. Suggestions follow the `language` setting; kinds and JSON keys stay in English.
 
-`--brief` keeps kind, paths and suggestion. `--out FILE` writes one Markdown note with a checkbox per suggestion, to a new file outside `.context`; it never overwrites.
+`--brief` keeps kind, paths and suggestion. `--out FILE` writes one Markdown note with a checkbox per suggestion, to a new file outside `.context`; it never overwrites. Neither combines with `--apply` or `--undo`.
 
 ## Routing
 
@@ -313,6 +334,8 @@ Optional tool settings live in `.context/relay/settings.json`. Relay never creat
 | `jev_mode` | `"off"` | `"off"`, `"shadow"` (record judgments, change nothing) or `"auto"` (let them act within the limits in [Jev](JEV.md)). Enabling it sends content to TypeSafe without a flag on each command. |
 | `jev_uses` | `["route"]` | Which uses are enabled: `route`, `source-scan`, `evaluate`, `rerank`, `dedupe`. |
 | `jev_max_calls` | `5` | Provider requests one command may make, 0 to 50. |
+| `tidy_actions` | all three | Which cleanups `tidy --apply` may do: `duplicate-file`, `broken-link`, `orphan`. |
+| `tidy_orphan_days` | `30` | Days an unlinked file must sit untouched before `tidy --apply` archives it, 0 to 3650; 0 never. |
 
 `deny_paths` patterns are matched case-insensitively against the spelled path and against the path it resolves to through links, and against every parent directory. A pattern without a slash matches any one path component (`secrets`, `*.pem`). A pattern with a slash matches the whole path or any parent directory of it (`finance/payroll*`); `*` also crosses slashes. The check runs before a file is read, so a refused `start` creates no task folder, and a `refresh` whose source became denied is refused with nothing changed. A packet taken before the rule is also refused at `context` export. Project controls are not subject to it. This applies only the names you list; it is not a secret scanner, and a denied file can still be pasted into an assistant by hand.
 

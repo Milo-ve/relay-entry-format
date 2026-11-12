@@ -41,11 +41,13 @@ Choose the operation from the user's intent:
   question. Suggestions never establish coverage, verification or acceptance.
 - Review: record only an explicit decision by the assigned reviewer about the
   current exact submission. Doing work or invoking this skill is not acceptance.
-- Organize files: run `relay --root PROJECT tidy [--path DIR]` for a read-only
-  report of duplicates, unlinked files, broken links and oversized entry files,
-  then propose a path map with conflicts and reference impact. Read both copies
-  before merging. This version has no physical-reorganization executor or
-  recovery command. Do not present onboarding as moving or archiving sources.
+- Organize files: run `relay --root PROJECT tidy --apply [--path DIR]` to remove
+  identical copies, archive long-unlinked files and repair unambiguous links
+  without asking per file; it backs up first and `tidy --undo latest` restores
+  the run. Use `--dry-run` to preview. Report what it did and what it skipped.
+  Overlapping sections, oversized entry files and stale concepts stay for a
+  person: read both copies before merging. Do not present onboarding as moving
+  or archiving sources.
 
 Keep existing stage runs on `okf-icm`; never create stage checkpoints to represent
 unperformed work or rewrite a graph. Relay submissions cannot overwrite selected
