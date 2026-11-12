@@ -1,6 +1,6 @@
 # REF v1: Relay Entry Format
 
-REF names the part of Relay that a person or assistant meets first: the workspace entry, the control files beside it, and the packet that carries them. It documents the format as shipped in version 0.3.0. It introduces no new fields and changes no existing state.
+REF names the part of Relay that a person or assistant meets first: the workspace entry, the control files beside it, and the packet that carries them. It documents the format introduced in version 0.3.0 and retained in the 0.4.0 local prototype. Naming it introduces no new fields and changes no existing state.
 
 The rest of the lifecycle (effort routing, submissions, review, freshness, views) is the [Relay Method task layer](RELAY.md). REF is the format those operations read and write at the edge.
 
@@ -57,8 +57,9 @@ creation and leaves no marker. Existing `.context` controls
 and packet shapes are unchanged. This bridge does not elevate source data or
 grant authority. See [workspace adaptation](RELAY.md#workspace-adaptation).
 
-The optional portable `ref` skill extends that guidance to task handoffs and
-continuity. `relay skill --name ref --to DIRECTORY` copies its complete resource
+The optional portable `ref` skill is an implementation candidate for task handoffs
+and continuity; observed cross-client compatibility remains a release gate.
+`relay skill --name ref --to DIRECTORY` copies its complete resource
 tree; `--zip FILE` exports that tree and `--manual FILE` exports a standalone
 guide and return template. Installation does not adapt any project. Native
 invocation syntax and actual tool access depend on the client; the

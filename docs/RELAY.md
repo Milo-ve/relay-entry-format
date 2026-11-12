@@ -2,6 +2,11 @@
 
 This is the executable local task layer added in version 0.3.0. It reuses the original CLI's bounded readers, Markdown section selector, knowledge metadata checks, hashing, and workspace lock. The original [stage protocol](PROTOCOL.md) remains available through `okf-icm`.
 
+Version 0.4.0 is a local prototype with a candidate portable `ref` skill. Its
+offline checks and pending observed client gates are recorded in
+[REF skill validation](ref-validation.md); the version number does not establish
+cross-client compatibility.
+
 ## Scope
 
 `relay` supports a preferred-assistant handoff flow. It does not invoke a worker model, execute shell commands, enforce model compute, authenticate organizations, or manage distributed collaboration. `relay serve` is loopback-only and intended for a trusted local user.
