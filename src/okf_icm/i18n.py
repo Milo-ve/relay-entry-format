@@ -368,6 +368,34 @@ _PAIRS: dict[str, tuple[str, str]] = {
     "nav.index": ("{count} permitted concept(s) are absent from their local index; navigation reads concepts directly.",
                   "{count} concepto(s) permitido(s) no aparecen en su índice local; la navegación lee los conceptos directamente."),
 
+    # ---------------------------------------------------------------- tidy report
+    "tidy.title": ("Tidy report", "Informe de orden"),
+    "tidy.note": ("Suggestions only. Nothing was changed, moved or deleted.",
+                  "Solo sugerencias. No se cambió, movió ni eliminó nada."),
+    "tidy.scanned": ("Scanned {files} file(s) and {sections} section(s) in: {scope}.",
+                     "Se revisaron {files} archivo(s) y {sections} sección(es) en: {scope}."),
+    "tidy.none": ("Nothing to tidy.", "No hay nada que ordenar."),
+    "tidy.truncated": ("Only the first {limit} sections were compared; narrow the scan with --path.",
+                       "Solo se compararon las primeras {limit} secciones; reduce el alcance con --path."),
+    "tidy.unreadable": ("Not readable as UTF-8 text, so not checked: {paths}.",
+                        "No se pudieron leer como texto UTF-8, así que no se revisaron: {paths}."),
+    "tidy.duplicate_file": ("Identical content. Keep {keep}; delete the others and point their links to it.",
+                            "Contenido idéntico. Conserva {keep}; elimina los demás y dirige sus vínculos a ese archivo."),
+    "tidy.duplicate_section": ("These sections say nearly the same thing. Keep one and replace the other with a link to it.",
+                               "Estas secciones dicen casi lo mismo. Conserva una y sustituye la otra por un vínculo a ella."),
+    "tidy.orphan": ("No index or other file links here. Add it to an index, or archive or delete it if it is no longer needed.",
+                    "Ningún índice ni otro archivo enlaza aquí. Agrégalo a un índice, o archívalo o elimínalo si ya no hace falta."),
+    "tidy.broken_link": ("The link target {target} does not exist. Fix the link or remove it.",
+                         "El destino del vínculo {target} no existe. Corrige el vínculo o quítalo."),
+    "tidy.oversize_controls": ("Every packet carries these control files ({characters} characters, budget {budget}). Shorten them or move detail to a source selected only when needed.",
+                               "Cada paquete incluye estos archivos de control ({characters} caracteres, presupuesto {budget}). Acórtalos o mueve el detalle a una fuente que se seleccione solo cuando haga falta."),
+    "tidy.oversize_entry": ("Every session loads this file ({characters} characters, budget {budget}). Keep rules and pointers here and move detail to a document read only when needed.",
+                            "Cada sesión carga este archivo ({characters} caracteres, presupuesto {budget}). Deja aquí reglas y referencias y mueve el detalle a un documento que se lea solo cuando haga falta."),
+    "tidy.review_signal": ("Recorded signals: lifecycle {lifecycle}, freshness {freshness}, trust {trust}. Verify and update it, or retire it.",
+                           "Señales registradas: ciclo de vida {lifecycle}, vigencia {freshness}, confianza {trust}. Verifícalo y actualízalo, o retíralo."),
+    "tidy.invalid_concept": ("The knowledge metadata is invalid. Fix it or move the file out of the knowledge folder.",
+                             "Los metadatos de conocimiento no son válidos. Corrígelos o saca el archivo de la carpeta de conocimiento."),
+
 }
 
 CATALOGUES: dict[str, dict[str, str]] = {
