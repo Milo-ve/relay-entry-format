@@ -46,7 +46,10 @@ class PlainFolder(TidyCase):
     def test_identical_files_are_grouped_and_the_linked_one_is_kept(self):
         self.write("notes/index.md", "# Index\n\n- [Firing](firing-copy.md)\n")
         self.write("notes/firing.md", f"# Firing\n\n{LONG}\n")
-        self.write("notes/firing-copy.md", f"# Firing\r\n\r\n{LONG}   \r\n\r\n")  # line endings and trailing space only
+        copy = self.root / "notes/firing-copy.md"
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        # Line endings and trailing space only. Bytes, because write_text would turn \r\n into \r\r\n on Windows.
+        copy.write_bytes(f"# Firing\r\n\r\n{LONG}   \r\n\r\n".encode("utf-8"))
         found = self.kinds(tidy.scan(self.root, ["notes"]), "duplicate-file")
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0]["paths"], ["notes/firing-copy.md", "notes/firing.md"])
