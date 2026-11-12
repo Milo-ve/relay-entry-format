@@ -13,7 +13,11 @@ from .i18n import LANGUAGES
 from .storage import ContextError, read_json
 
 RELATIVE = ".context/relay/settings.json"
-DEFAULTS = {"lock_wait_seconds": 5.0, "require_expected_revision": False, "deny_paths": [], "language": "en"}
+JEV_MODES = ("off", "shadow", "auto")
+JEV_USES = ("route", "source-scan", "evaluate", "rerank", "dedupe")
+MAX_JEV_CALLS = 50
+DEFAULTS = {"lock_wait_seconds": 5.0, "require_expected_revision": False, "deny_paths": [], "language": "en",
+            "jev_mode": "off", "jev_uses": ["route"], "jev_max_calls": 5}
 MAX_WAIT = 300.0
 MAX_PATTERNS = 100
 MAX_PATTERN_LENGTH = 200
@@ -39,6 +43,18 @@ def _check(key: str, value):
     if key == "language":
         if value not in LANGUAGES:
             raise ContextError(f"{RELATIVE}: language must be one of {', '.join(LANGUAGES)}.")
+        return value
+    if key == "jev_mode":
+        if value not in JEV_MODES:
+            raise ContextError(f"{RELATIVE}: jev_mode must be one of {', '.join(JEV_MODES)}.")
+        return value
+    if key == "jev_uses":
+        if not isinstance(value, list) or len(set(map(str, value))) != len(value) or not all(x in JEV_USES for x in value):
+            raise ContextError(f"{RELATIVE}: jev_uses must be a list without repeats drawn from {', '.join(JEV_USES)}.")
+        return list(value)
+    if key == "jev_max_calls":
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_JEV_CALLS:
+            raise ContextError(f"{RELATIVE}: jev_max_calls must be a whole number from 0 to {MAX_JEV_CALLS}.")
         return value
     raise ContextError(f"{RELATIVE}: unknown setting '{key}'. Known settings: {', '.join(DEFAULTS)}.")
 

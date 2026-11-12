@@ -56,8 +56,9 @@ def parser():
     start.add_argument("--reviewer", default="local-reviewer")
     start.add_argument("--blocker", action="append", default=[])
     start.add_argument("--boundaries", default="Propose changes; no publishing or external actions.")
-    start.add_argument("--jev", choices=("off", "shadow", "route"), default="off",
-                       help="Explicitly send goal and selected non-control sources to TypeSafe; never enables tool execution")
+    start.add_argument("--jev", choices=("off", "shadow", "route"), default=None,
+                       help="Send goal and selected non-control sources to TypeSafe for this task; overrides the workspace "
+                            "jev_mode setting (default: follow it, and it is off unless enabled); never enables tool execution")
     start.add_argument("--max-chars", type=int, default=32000)
     start.add_argument("--actor", help="Optional name recorded on the event; self-recorded, not authenticated")
     listing = sub.add_parser("list", help="List tasks with current freshness and acceptance")

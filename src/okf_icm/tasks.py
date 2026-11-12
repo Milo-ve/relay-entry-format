@@ -9,7 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import guidance, jev, settings
+from . import guidance, jev, jev_policy, settings
 from .packets import packet_hash, section
 from .routing import route, apply_jev, PROFILES
 from .storage import ContextError, atomic_write, digest, identifier, json_text, lock, now, read_json, read_text, readable
@@ -130,16 +130,20 @@ class Tasks:
 
     def start(self, task: str, goal: str, acceptance: list[str], selections=None, kind="auto", risk="standard",
               owner="local-operator", reviewer="local-reviewer", blockers=None, boundaries="Propose changes; no publishing or external actions.",
-              review_required=True, jev_mode="off", max_chars=32000, actor=None) -> dict:
+              review_required=True, jev_mode=None, max_chars=32000, actor=None) -> dict:
+        """`jev_mode` None follows the workspace `jev_mode` setting (off unless the operator enabled it)."""
         actor = _actor(actor)
         if self.home(task).exists():
             raise ContextError("Task exists. Choose another ID; existing work is never overwritten.")
         if not acceptance:
             raise ContextError("At least one acceptance criterion is required.")
-        if jev_mode not in {"off", "shadow", "route"} or not 1000 <= max_chars <= 1_000_000:
+        if jev_mode not in {None, "off", "shadow", "route"} or not 1000 <= max_chars <= 1_000_000:
             raise ContextError("Invalid Jev mode or character budget (1000–1000000).")
         if risk == "high" and not review_required:
             raise ContextError("High-consequence tasks require review.")
+        configured = self.settings()
+        jev_flag = jev_mode
+        jev_mode, jev_trigger = jev_policy.mode(jev_flag, configured)
         state = {"schema_version": 1, "id": identifier(task), "goal": _nonempty(goal, "Goal"),
                  "acceptance": [_nonempty(x, "Acceptance") for x in acceptance], "selections": selections or [],
                  "kind": kind, "risk": risk, "owner": _nonempty(owner, "Owner"), "reviewer": _nonempty(reviewer, "Reviewer"),
@@ -149,8 +153,20 @@ class Tasks:
         packet = self.snapshot(state)
         self.ensure_budget(packet, max_chars)
         if jev_mode != "off":
-            observation = jev.judge({"goal": state["goal"], "sources": [x for x in packet["files"] if x["role"] != "control"]})
-            apply_jev(packet["route"], observation, jev_mode)
+            sources = [x for x in packet["files"] if x["role"] != "control"]
+            if jev_trigger == "flag":
+                # Asked for on this command: always consult, as before.
+                apply_jev(packet["route"], jev.judge({"goal": state["goal"], "sources": sources}), jev_mode)
+            else:
+                # Enabled for the workspace: consult only where the rules left the question open.
+                plan = jev_policy.decide("route", configured, decisive=packet["route"]["reason_codes"] != ["conservative-default"])
+                if plan["call"]:
+                    scan = bool(sources) and "source-scan" in configured["jev_uses"]
+                    observation = jev.judge({"goal": state["goal"], "sources": sources}, scan_sources=scan)
+                    apply_jev(packet["route"], {"trigger": "setting", **observation}, jev_mode,
+                              may_lower=configured["jev_mode"] == "auto" and risk == "low" and kind == "auto")
+                else:
+                    packet["route"]["jev"] = jev_policy.skipped(plan)
             packet["packet_id"] = packet_hash(packet)
             self.ensure_budget(packet, max_chars)
         self.home(task).mkdir(parents=True)
