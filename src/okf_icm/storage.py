@@ -72,7 +72,11 @@ def read_json(path: Path) -> dict:
 def atomic_write(path: Path, text: str, *, exclusive: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if exclusive:
-        # O_EXCL refuses existing files, including symlinks.
+        # Windows can follow a dangling file symlink even with exclusive open.
+        # Refuse existing links explicitly; O_EXCL still rejects other existing
+        # files and competing ordinary creates. External editors are not locked.
+        if path.is_symlink():
+            raise FileExistsError(f"Refusing to write through a symbolic link: {path}")
         with path.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
         return

@@ -9,7 +9,7 @@ the version number or from opening a pull request.
 ## Offline checks that were run
 
 - The original `feat/phase-0-baseline` record reported 106 passing tests. The
-  0.4.0 suite now has **240 passing tests**. Coverage includes complete bundled
+  0.4.0 suite now has **241 passing tests**. Coverage includes complete bundled
   skill installation into a directory with spaces, refusal of differing existing
   resources, ZIP/manual export without overwrites, workspace preview/apply with
   backups, symlink boundaries, and refusal of incompatible workspaces.
@@ -24,6 +24,10 @@ the version number or from opening a pull request.
   stale caller. This establishes continuity through files, not between assistants.
 - `tests/test_compat.py` loads a frozen task written by earlier code and confirms
   its packet hashes, statuses and bytes survive read-only commands unchanged.
+- The first publication CI run passed on Linux/macOS but exposed a Windows
+  dangling-symlink export failure. Exclusive writes now explicitly refuse links;
+  a storage regression test checks that neither the link nor its absent target is
+  changed. CI outcomes are available on the PR alongside the local test record.
 
 The shell has no bare `python` executable. The publication check uses the existing
 virtual environment's Python with the publication worktree's absolute `src` path
