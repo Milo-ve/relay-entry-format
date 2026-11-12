@@ -77,7 +77,7 @@ flowchart LR
 - **Effort.** Rules recommend Direct, Standard, Investigative, or Clarify, and each task allows one escalation. These are recommendations, not compute limits or permission. See [Routing](docs/RELAY.md#routing).
 - **Freshness.** A change to a selected input, a control, the output, or the evidence makes the task due for review. `relay refresh` takes a new snapshot and keeps the history. See [Result and acceptance](docs/RELAY.md#result-and-acceptance).
 - **Review.** A decision names one exact submission. Editing the output afterwards means the earlier acceptance no longer applies to it. Reviewer names are self-recorded.
-- **Finding sources (experimental).** `relay navigate` suggests knowledge sources without calling a model. It is not a completeness check. See [Navigation](docs/RELAY.md#navigation-experimental) and the [evaluation record](docs/navigate-results.md).
+- **Finding sources (experimental).** `relay navigate` suggests knowledge sources, by default without calling a model. It is not a completeness check. See [Navigation](docs/RELAY.md#navigation-experimental) and the [evaluation record](docs/navigate-results.md).
 
 ## Observability and portability
 

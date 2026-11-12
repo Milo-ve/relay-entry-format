@@ -39,6 +39,17 @@ Relay asks Jev only when all of these hold. Otherwise it records a skip with the
 | ------------- | ---------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `route`       | `relay start`          | What kind of work is this, and do the sources conflict?            | `auto`: raises to Investigative on a design, diagnosis or conflict signal. May lower to Direct, see below.     |
 | `source-scan` | same request as `route` | Does a source address instructions to an assistant?                | Adds the flag `source-instructions` under `route.jev.flags`. A warning only; it also blocks the lowering below. |
+| `evaluate`    | `relay submit`         | Does the result claim something the sources do not support? Does it meet each acceptance criterion? | Nothing. Adds an `advisory` to `relay show` with the probabilities and the flags `unsupported-claim` and `criterion-unmet`. |
+| `rerank`      | `relay navigate`       | Does this candidate help achieve the goal?                         | `auto`: reorders the candidates already chosen. Adds a `jev_no_support` gap when none looks relevant.          |
+| `dedupe`      | `relay tidy`           | Do these two partly overlapping sections say the same thing?       | `auto`: a confident yes becomes a `duplicate-section` finding marked `basis: jev`.                             |
+
+In `shadow`, every use records its judgment and changes nothing: no reordering and no added finding.
+
+**Submit.** The advisory is stored beside the submission, not inside it, so a submission's identity never depends on a provider. It is shown only for the submission it judged and is dropped on refresh. A flagged result can still be accepted and an unflagged one rejected: the reviewer decides. Results over 60,000 characters, binary files and denied paths are not sent. At most ten criteria are asked.
+
+**Navigate.** Only the candidates the lexical step already chose are judged. None is added or removed and the budget is unchanged. Selection stays explicit with `--select`.
+
+**Tidy.** Sections that share 80% of their words are reported without Jev. With `dedupe` enabled, pairs between 50% and 80% are sent, eight per request, the first 2,000 characters of each, up to `jev_max_calls` requests. Pairs left over are counted as `unjudged`.
 
 **Routing is skipped** when a blocker, high consequences, a stated `--kind` or a keyword already decided the route. A refresh returns to the rules and does not ask again.
 
@@ -48,7 +59,14 @@ Relay asks Jev only when all of these hold. Otherwise it records a skip with the
 
 ## What is sent
 
-The task goal and the selected non-control sources, to TypeSafe's endpoint. Control files are never sent. `deny_paths` applies before anything is read, so set it before choosing `shadow` or `auto`: with the setting on, no flag marks the commands that send content.
+To TypeSafe's endpoint, and only for an enabled use:
+
+- `route` and `source-scan`: the task goal and the selected non-control sources.
+- `evaluate`: the goal, those sources, the result files and the reported checks.
+- `rerank`: the goal and the candidate sections.
+- `dedupe`: the start of each section in a compared pair.
+
+Control files are never sent. `deny_paths` applies before anything is read, so set it before choosing `shadow` or `auto`: with the setting on, no flag marks the commands that send content.
 
 Requests time out after five seconds, are not retried, reject redirects and bound the response size. Relay validates every probability it uses and records `usage` as reported.
 

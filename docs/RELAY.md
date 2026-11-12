@@ -187,7 +187,9 @@ and relevant permitted unresolved links. A gap is lexical advice, not a complete
 Generated sentences carry stable English `code`, `params`, and localized `text` (English or
 Spanish); JSON keys and recorded signal values remain English. Output has sorted keys and
 no timestamp. Identical files on the same side of every freshness deadline yield identical
-output. No Jev option is included. Existing controls, packet formats and saved state are unchanged.
+output. Existing controls, packet formats and saved state are unchanged.
+
+By default navigation calls no model. If the workspace enabled the `rerank` use (see [Jev](JEV.md)), the candidates already chosen are also judged for relevance: each gains `jev_relevance`, `auto` reorders them, and a `jev_no_support` gap is added when none looks relevant. No candidate is added or removed, the budget is unchanged, and the output is then no longer deterministic. The evaluation in [navigate-results.md](navigate-results.md) was run without it.
 
 The CLI also prints a localized experimental warning on stderr, leaving stdout as
 JSON for tools. The bundled `ref` skill uses navigation as an inspection step
@@ -196,7 +198,7 @@ and never treats suggestions as a completed packet or an answered question.
 
 ## Tidy
 
-`relay --root PROJECT tidy` reports clutter and suggests what to do about it. It reads only: it changes, moves and deletes nothing, takes no lock, and calls no model. A person or assistant applies the suggestions, with version control as the undo. There is no `--apply`.
+`relay --root PROJECT tidy` reports clutter and suggests what to do about it. It reads only: it changes, moves and deletes nothing and takes no lock. It calls no model unless the workspace enabled the `dedupe` use (see [Jev](JEV.md)), which asks about sections that overlap between 50% and 80%. A person or assistant applies the suggestions, with version control as the undo. There is no `--apply`.
 
 Without `--path` it scans `.context/knowledge`. `--path DIR` (repeatable, relative to `--root`) scans any folder or Markdown file, and needs no workspace, so a plain folder of notes can be checked. Only `.md` files are read.
 
