@@ -1,6 +1,6 @@
 # Relay navigate: evaluation and proposal
 
-**Status: initial implementation on this branch, experimental. Decision 3 accepted on 2026-11-11 (12,000 / 2,000, no per-type budgets, `--stage` in v1). Original synthetic acceptance passed; held-out gap acceptance failed. Ranking is frozen pending a new decision; see [the evaluation record](navigate-results.md). The proposal and repository snapshot below remain as historical design context.** Written on branch `feat/navigate-design`, stacked on `feat/phase-2-savings-and-practicality`. The original proposal changed no behaviour, REF, packets or existing state; the implementation now adds a read-only CLI operation.
+**Status: initial implementation on this branch, experimental. Decision 3 accepted on 2026-11-11 (12,000 / 2,000, no per-type budgets, `--stage` in v1). Original synthetic acceptance passed; held-out gap acceptance failed. Ranking is frozen pending a new decision; see [the evaluation record](../navigate-results.md). The proposal and repository snapshot below remain as historical design context.** Written on branch `feat/navigate-design`, stacked on `feat/phase-2-savings-and-practicality`. The original proposal changed no behaviour, REF, packets or existing state; the implementation now adds a read-only CLI operation.
 
 Goal: today Relay freezes what a person selects and reports when it goes stale. That is verification. This asks whether Relay can also help find the smallest well-justified set of sources, by walking the structure that OKF and ICM already give it, without a model call.
 

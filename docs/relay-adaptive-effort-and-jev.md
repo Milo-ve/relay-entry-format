@@ -18,9 +18,9 @@
 
 The structure should allocate effort in proportion to a task's demands. Small, well-understood work should use little context, reasoning, ceremony, and coordination. Broad, uncertain work should receive investigation, planning, appropriate computation, and stronger checks.
 
-This refines the [Relay proposal](relay-product-proposal.md): adaptive effort is part of the operating design, while a work brief is the user-facing way to expose the task and its boundaries.
+This refines the [Relay proposal](archive/relay-product-proposal.md): adaptive effort is part of the operating design, while a work brief is the user-facing way to expose the task and its boundaries.
 
-For the sequence from current artifacts to daily team operation, see the [operational backcast](relay-operational-backcast.md).
+For the sequence from current artifacts to daily team operation, see the [operational backcast](archive/relay-operational-backcast.md).
 
 Total effort includes context gathering, computation, retries, coordination, and human review. Task requirements include quality and operating constraints. Minimizing the first model call can increase total work through retries and review. Always using maximum effort can waste resources on routine work.
 

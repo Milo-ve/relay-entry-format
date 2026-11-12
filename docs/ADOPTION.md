@@ -33,7 +33,7 @@ Do not put Relay in front of people who do not need it. A client or a non-techni
 
 | Audience | Suggested surface | What it covers |
 |---|---|---|
-| Colleagues with some technical skill | A private Git repository, with one branch or pull request per task. | Attributable history and approval, using Git's own accounts. Relay's names stay self-recorded; `--actor` and `review --external-ref` only record who says they acted and where the approval lives. For the pilot rules (one writer per run, no automatic merging of conflicting receipts, everyone can read everything cloned) see the [proposal](relay-product-proposal.md#phase-2-trusted-team-pilot). |
+| Colleagues with some technical skill | A private Git repository, with one branch or pull request per task. | Attributable history and approval, using Git's own accounts. Relay's names stay self-recorded; `--actor` and `review --external-ref` only record who says they acted and where the approval lives. For the pilot rules (one writer per run, no automatic merging of conflicting receipts, everyone can read everything cloned) see the [proposal](archive/relay-product-proposal.md#phase-2-trusted-team-pilot). |
 | Clients and non-technical colleagues | Their usual tool (comments in a shared document, or an issue tracker) plus the [delivery card](RELAY.md#delivery-card). Relay stays the evidence ledger: paste the `submission_id` and the hash into their tool. | Assignment, notifications and identity, which Relay does not provide. |
 | Review with a platform identity | A private page on a platform the reviewer already signs in to. **[Not verified]** whether an external reviewer can open it without an account. It creates a second source of truth beside `.context`. | Sign-in, if the platform provides it. |
 | A web platform with its own login and permissions | Only after one full cycle with a second human reviewer has been observed. | High effort. Not recommended before that evidence exists. |
@@ -44,4 +44,4 @@ Do not put Relay in front of people who do not need it. A client or a non-techni
 
 ## What this guide does not establish
 
-No collaboration, cross-assistant handoff or time saving with real users has been observed; the [operational backcast](relay-operational-backcast.md) lists the evidence still required. The practices above are a starting point to test, not a result.
+No collaboration, cross-assistant handoff or time saving with real users has been observed; the [operational backcast](archive/relay-operational-backcast.md) lists the evidence still required. The practices above are a starting point to test, not a result.

@@ -4,7 +4,7 @@
 
 **Status:** Proposed operating model and evidence-gated backcast. Milestones, owners, and thresholds below are proposals. No software, account, pilot, or deployment was started by writing this document.
 
-**Implementation update (0.3.0):** the local CLI/interface and effort recommendations are now implemented; [README](../README.md) and [RELAY.md](RELAY.md) describe the executable slice. The gates below remain unpassed until their specified collaboration and operating evidence is observed.
+**Implementation update (0.3.0):** the local CLI/interface and effort recommendations are now implemented; [README](../../README.md) and [RELAY.md](../RELAY.md) describe the executable slice. The gates below remain unpassed until their specified collaboration and operating evidence is observed.
 
 **Planning horizon:** Approximately six months after an agreed kickoff, followed by expansion only where justified. The week ranges are planning allowances, not delivery commitments. Passing a gate determines progression.
 
@@ -234,7 +234,7 @@ Local preferred-assistant exports cannot provide remote cancellation or recall. 
 
 ## 7. Where Jev and additional agents enter the backcast
 
-The [adaptive-effort design](relay-adaptive-effort-and-jev.md) owns the detailed research and controller proposal. This backcast adds sequencing:
+The [adaptive-effort design](../relay-adaptive-effort-and-jev.md) owns the detailed research and controller proposal. This backcast adds sequencing:
 
 | Optional branch | Earliest useful point | Requirement before operational use |
 |---|---|---|
@@ -287,5 +287,5 @@ The destination remains the same: a collaborator can enter a shared context, und
 ## Related documents
 
 - [Product proposition and strategy](relay-product-proposal.md).
-- [Adaptive effort and Jev](relay-adaptive-effort-and-jev.md).
+- [Adaptive effort and Jev](../relay-adaptive-effort-and-jev.md).
 - [First collaborator work brief](relay-first-work-brief.md).

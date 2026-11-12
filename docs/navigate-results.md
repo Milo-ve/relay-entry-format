@@ -35,7 +35,7 @@ The ranking implementation evaluated here is `src/okf_icm/navigation.py`, SHA-25
 
 Both fixture evaluations used that same implementation, without intermediate tuning.
 The held-out sizes had already informed the budgets, as disclosed in
-[navigate-budgets.md](navigate-budgets.md). Held-out retrieval results were not used
+[navigate-budgets.md](archive/navigate-budgets.md). Held-out retrieval results were not used
 to modify the algorithm. Now that these results have been seen, this held-out set
 cannot serve as a blind test of a future tuned revision.
 

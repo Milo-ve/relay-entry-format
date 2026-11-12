@@ -282,7 +282,7 @@ For a requested Claude instruction bridge, preview
 append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
 scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
 reorganization, MCP and publishing are later deliveries in the
-[implementation plan](docs/ref-command-plan.md).
+[implementation plan](docs/archive/ref-command-plan.md).
 
 ### CLI walkthrough
 
@@ -304,7 +304,7 @@ This is a trusted-user prototype, not an authorization boundary. Do not expose i
 | HTTP forms, CSRF, and concurrent-edit handling                 | Resistance to prompt injection in general                   |
 |                                                                | Organizational authorization or managed compute enforcement |
 
-The [operational backcast](docs/relay-operational-backcast.md) lists the evidence still required before wider use. Its first gate, one observed collaboration, has not been run.
+The [operational backcast](docs/archive/relay-operational-backcast.md) lists the evidence still required before wider use. Its first gate, one observed collaboration, has not been run.
 
 ## Development
 
@@ -324,7 +324,7 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 - [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
 - [CLI walkthrough](docs/WALKTHROUGH.md): one task from `start` to `review`, command by command.
 - [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
-- [Product proposition](docs/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/relay-operational-backcast.md), and [first collaborator experiment](docs/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
+- [Product proposition](docs/archive/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/archive/relay-operational-backcast.md), and [first collaborator experiment](docs/archive/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
 
 ## License
 

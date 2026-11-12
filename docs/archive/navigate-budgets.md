@@ -14,8 +14,8 @@ Only sizes measured in this repository, reproduced by `python examples/navigatio
 - the `expected` lists in both `goals.json` files (17 source-backed goals each);
 - the existing defaults: `--max-chars` 32,000 for `start` and `context` (`relay_cli.py`, `cli.py`),
   the 1,000 to 1,000,000 range (`tasks.py`), the 2,500-character control bound
-  ([ADOPTION.md](ADOPTION.md)), and "budgets count rendered Unicode characters, not tokens"
-  ([PROTOCOL.md](PROTOCOL.md)).
+  ([ADOPTION.md](../ADOPTION.md)), and "budgets count rendered Unicode characters, not tokens"
+  ([PROTOCOL.md](../PROTOCOL.md)).
 
 No precision, recall or navigator output was used. The held-out sizes were used, so that
 fixture no longer tests the budgets blind. They are recorded here before any navigator code.

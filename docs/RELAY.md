@@ -147,7 +147,7 @@ are named in `left_out` with a reason. Above 26,000 a note warns about the full 
 task packet's indented JSON, including JSON escaping, metadata signals, hashes and separators.
 Controls are not charged here; `controls_raw_chars` reports their raw text separately,
 without claiming to estimate the brief, route or total packet overhead. See the
-[measurements and accepted budgets](navigate-budgets.md).
+[measurements and accepted budgets](archive/navigate-budgets.md).
 
 The walk filters spelled and resolved paths before content reads, prunes denied directories,
 and never follows directory symlinks. Denied, sensitive, escaping, invalid and unreadable

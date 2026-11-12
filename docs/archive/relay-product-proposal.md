@@ -6,7 +6,7 @@
 
 **Status:** Product proposal and test plan. This is not an approved roadmap, an implemented application, or evidence of product-market fit.
 
-**Implementation update (0.3.0):** a local CLI and browser prototype now implement the task-to-review loop and effort recommendations, with optional Jev judgments. This proposal retains its planning history. See [README](../README.md) and [the task protocol](RELAY.md) for current features and limitations. Organizational access, managed worker execution, and measured savings remain future work.
+**Implementation update (0.3.0):** a local CLI and browser prototype now implement the task-to-review loop and effort recommendations, with optional Jev judgments. This proposal retains its planning history. See [README](../../README.md) and [the task protocol](../RELAY.md) for current features and limitations. Organizational access, managed worker execution, and measured savings remain future work.
 
 ## 1. The recommendation
 
@@ -35,7 +35,7 @@ When a recorded dependency changes, the result displays **Review needed** with a
 
 The broad company workspace remains a possible destination. The entry point is a recurring handoff that can be improved and measured now.
 
-Apply the operating principle across context, reasoning, workflow, and verification. Routine work should take a short path; uncertainty and consequential changes should trigger appropriate investigation or review. The controller, execution profiles, and optional role of Jev are specified in [Adaptive effort and Jev](relay-adaptive-effort-and-jev.md). These mechanisms are proposed, not implemented by the current CLI.
+Apply the operating principle across context, reasoning, workflow, and verification. Routine work should take a short path; uncertainty and consequential changes should trigger appropriate investigation or review. The controller, execution profiles, and optional role of Jev are specified in [Adaptive effort and Jev](../relay-adaptive-effort-and-jev.md). These mechanisms are proposed, not implemented by the current CLI.
 
 The [operational backcast](relay-operational-backcast.md) works backward from dependable daily use to the capability gates, operating responsibilities, and first seven working days needed to get there.
 
@@ -261,7 +261,7 @@ Keep canonical artifacts exportable, make dependencies explicit, separate execut
 
 ## 7. What exists, what is proposed, and what is deliberately deferred
 
-The [original stage protocol](PROTOCOL.md) describes the inherited CLI. The [Relay task protocol](RELAY.md) describes the local task layer added in 0.3.0.
+The [original stage protocol](../PROTOCOL.md) describes the inherited CLI. The [Relay task protocol](../RELAY.md) describes the local task layer added in 0.3.0.
 
 | Capability | Current basis | Work needed |
 |---|---|---|

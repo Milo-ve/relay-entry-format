@@ -18,7 +18,7 @@ e instalación anterior de `relay-workspace`. La reorganización física (3), MC
 controles existentes no se migran.
 
 La entrega 4 sigue siendo una puerta de salida, incluso para esta candidata.
-El [registro de validación](ref-validation.md) distingue checks reproducibles,
+El [registro de validación](../ref-validation.md) distingue checks reproducibles,
 versiones de clientes detectadas y pruebas observadas o pendientes. No se
 anuncia paridad comprobada mientras falten los recorridos reales ni se publica
 una release para saltar esa puerta. Los apartados siguientes conservan la
