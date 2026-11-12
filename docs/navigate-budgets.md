@@ -1,8 +1,9 @@
-# Navigate budgets (proposed, not yet accepted)
+# Navigate budgets (accepted)
 
-Status: a proposal for decision 3 in [navigate-design.md](navigate-design.md). No navigator code
-exists. This file was written before any navigator ran, so the budgets cannot have been tuned
-to its results.
+Status: decision 3 accepted by the user on 2026-11-11: 12,000 source packet characters,
+2,000 raw characters per source, no per-type budgets; `--stage` ships in v1.
+The measurements and proposal were committed before implementation (d679327, d67964d),
+so the budgets were not tuned to navigator results.
 
 ## What this is based on
 

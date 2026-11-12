@@ -41,6 +41,8 @@ The two kinds differ in what surrounds `files`:
 - **Stage packet** (`okf-icm context`): `run_id`, `stage`, `status`, `warnings`.
 - **Task packet** (`relay start`, `refresh`, `escalate`): `task_id`, `task_revision`, `brief`, `route`. Its file records also carry `knowledge_signals` (lifecycle, freshness, trust) for knowledge files, otherwise `null`.
 
+`relay navigate` offers read-only source suggestions; only explicit `--select` values enter a packet. Navigation creates no new packet kind or on-disk state (see [limits and held-out failure](navigate-results.md)).
+
 ## Version and compatibility
 
 The optional bundled `relay-workspace` skill connects an assistant to these

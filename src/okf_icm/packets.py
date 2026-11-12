@@ -10,12 +10,10 @@ from . import settings
 from .storage import ContextError, atomic_write, identifier, json_text, now, readable, read_json
 
 
-def section(text: str, title: str) -> str:
-    lines = text.splitlines(keepends=True)
-    start = None
-    level = None
+def _heading_lines(text: str):
+    """One scanner shared by listing and exact section selection."""
     fence = None
-    for i, line in enumerate(lines):
+    for i, line in enumerate(text.splitlines(keepends=True)):
         stripped = line.lstrip()
         if stripped.startswith(("```", "~~~")):
             marker = stripped[:3]
@@ -27,12 +25,23 @@ def section(text: str, title: str) -> str:
         if fence:
             continue
         match = re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", line.rstrip())
-        if not match:
-            continue
-        if start is not None and len(match[1]) <= level:
+        if match:
+            yield i, len(match[1]), match[2]
+
+
+def headings(text: str) -> list[str]:
+    """Exact ATX titles accepted by section(), in order, retaining duplicates."""
+    return [title for _, _, title in _heading_lines(text)]
+
+
+def section(text: str, title: str) -> str:
+    lines = text.splitlines(keepends=True)
+    start = level = None
+    for i, heading_level, heading_title in _heading_lines(text):
+        if start is not None and heading_level <= level:
             return "".join(lines[start:i])
-        if match[2] == title:
-            start, level = i, len(match[1])
+        if heading_title == title:
+            start, level = i, heading_level
     if start is None:
         raise ContextError(f"Markdown heading not found: {title}")
     return "".join(lines[start:])

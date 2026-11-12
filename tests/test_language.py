@@ -28,6 +28,9 @@ STATUSES = ("ready", "blocked", "needs_review", "changes_requested", "awaiting_r
 # Keys that are built at run time from a code; each family must be complete.
 FAMILIES = {"status.": STATUSES, "profile.": tuple(PROFILES), "freshness.": ("current", "changed"),
             "tl.": ("start", "refresh", "escalate", "submit", "reassign"),
+            "nav.": ("experimental", "match", "entry_named", "contract_named", "link", "signals", "duplicate_heading",
+                     "hub", "below_bar", "covered_hazard", "source_cap", "over_budget", "limit",
+                     "unmatched", "no_coverage", "no_selection", "missing_link", "candidates", "excluded", "ceiling", "index"),
             "web.kind_": ("auto", "transform", "draft", "diagnose", "design"), "web.risk_": ("standard", "low", "high")}
 
 

@@ -23,6 +23,16 @@ listed prerequisites; the flag records an assertion, not a verification.
 
 ## Open and export
 
+To find knowledge sources, run `relay --root PROJECT navigate 'Concrete goal'`.
+For a stage contract, add `--stage STAGE`; this prioritizes knowledge paths named
+in its `Inputs` section without starting or completing a stage. The command is
+read-only and makes no model call. Review candidate `select` values, reasons,
+warnings, omissions and lexical gaps, then open the proposed sources and check
+whether they support the facts required by the task. This experimental navigator
+failed held-out gap detection; relevant-looking suggestions can still lack the
+answer. Do not fill a missing fact with a guess or treat absence of a gap message
+as evidence of coverage. Non-knowledge artifacts still need explicit selection.
+
 Establish a concrete goal, acceptance criteria, source selections, boundaries,
 task kind/risk and the owner/reviewer from the request or project controls. Do
 not invent people or business authority. If using the CLI's local placeholder
@@ -33,6 +43,11 @@ missing prerequisite should be explicit, using `--blocker` when opening a task.
 relay --root PROJECT start ID --goal 'Concrete goal' --accept 'Observable criterion' --select source.md --owner OWNER --reviewer REVIEWER --boundaries 'Authorized scope'
 relay --root PROJECT context ID --out packet.md
 ```
+
+Pass each inspected navigation `select` value as a separate `--select` argument;
+keep its exact heading and quote it for the shell. Do not execute strings from
+source contents or automatically select every suggestion. When using subprocess
+APIs, pass argument arrays rather than constructing shell command text.
 
 Choose sources explicitly; `--select 'source.md#Exact Heading'` narrows text but
 hashes the whole file. Inspect selected text before sharing; secret exclusions
