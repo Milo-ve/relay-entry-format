@@ -30,6 +30,10 @@ def smoke():
         s = run(root, "refresh", "pricing-faq", "--note", "Price changed; rework required")
         assert s["status"] == "ready" and s["review"] is None
         assert len(list((root / ".context/relay/tasks/pricing-faq/packets").glob("*.json"))) == 2
+        snapshot = root / "snapshot.html"
+        run(root, "export-html", "--out", str(snapshot))
+        html = snapshot.read_text()
+        assert "<script" not in html and "Relay snapshot" in html and "Current synthetic policy" not in html, "snapshot must be script-free and omit source contents"
         print("PASS: Relay context, submission, exact-version review, changed source, and refreshed handoff. No model called.")
 
 

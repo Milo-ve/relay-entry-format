@@ -206,5 +206,26 @@ class JevCase(unittest.TestCase):
             opener.assert_not_called()
 
 
+class ControlBudgetCase(unittest.TestCase):
+    """Controls are included in every packet, so each added character is paid for on every task."""
+
+    def test_default_scaffold_controls_stay_within_budget(self):
+        from okf_icm.tasks import CONTROLS
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            initialize(root, "Relay test")
+            sizes = {path: len((root / path).read_text(encoding="utf-8")) for path in CONTROLS}
+        self.assertLessEqual(sizes[".context/ENTRY.md"], 680, sizes)
+        self.assertLessEqual(sum(sizes.values()), 2500, sizes)
+
+    def test_entry_still_names_task_and_stage_commands_and_the_skills(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            initialize(root, "Relay test")
+            entry = (root / ".context/ENTRY.md").read_text(encoding="utf-8")
+        for needle in ("relay show TASK", "relay context TASK", "okf-icm status --run RUN", "relay skill", "never creates acceptance"):
+            self.assertIn(needle, entry)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "okf-icm"
-version = "0.3.0"
+version = "0.4.0"
 description = "Relay Method: adaptive effort, portable context, and reviewable work built on OKF + ICM"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,3 +17,6 @@ relay = "okf_icm.relay_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+okf_icm = ["skills/*/SKILL.md", "skills/*/references/*.md", "skills/*/assets/*.md"]

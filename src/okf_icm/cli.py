@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 from . import __version__
-from . import knowledge
+from . import knowledge, settings
 from .packets import export
 from .storage import ContextError, atomic_write, json_text, lock, read_text
 from .workspace import Workspace, initialize
@@ -93,7 +93,7 @@ def dispatch(args) -> int:
                 "If tools are unavailable, ask the operator to paste the exported packet.\n")
         emit(text, args.out)
         return 0
-    with lock(ws.home):
+    with lock(ws.home, wait=settings.load(ws.home)["lock_wait_seconds"]):
         if args.command == "context":
             # Check output first so an existing destination doesn't create an orphan export.
             if args.out and (args.out.exists() or args.out.is_symlink()):

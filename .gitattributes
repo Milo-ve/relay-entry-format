@@ -1,0 +1,2 @@
+# Frozen fixtures: hashes inside them depend on exact bytes, so no line-ending conversion.
+tests/fixtures/** -text

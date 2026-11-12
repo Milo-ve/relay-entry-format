@@ -6,13 +6,18 @@ Relay is a local, provider-neutral tool for handing a piece of work to an AI ass
 
 It works with the assistant you already use. Relay prepares the context and records the result; it does not call a model, run commands, or decide that a claim is true.
 
+The entry file, project controls, and packet that an assistant receives are specified as **REF**, the Relay Entry Format ([REF v1](docs/REF.md)). The rest of the lifecycle is the Relay Method.
+
 ```text
 Open the task → Understand its boundaries → Continue with your assistant → Return reviewable work
 ```
 
 > Use the least total effort that satisfies the task's requirements, and increase effort when evidence shows it is needed.
 
-**Status: local prototype 0.3.0.** Single user, loopback only, no authentication. See [What is and is not established](#what-is-and-is-not-established).
+**Status: local prototype 0.4.0 with a candidate portable REF skill.** Single user,
+loopback only, no authentication. A compatibility release awaits observed client
+discovery and handoff checks in the [validation record](docs/ref-validation.md).
+See [What is and is not established](#what-is-and-is-not-established).
 
 ---
 
@@ -69,6 +74,8 @@ flowchart LR
 `relay list` and `relay show` recompute freshness at any time. `relay refresh` and `relay escalate` are covered below.
 
 ### What a packet carries
+
+A packet follows [REF v1](docs/REF.md).
 
 | Part     | Source                                                        | Treatment                                                                     |
 | -------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -132,6 +139,8 @@ Everything Relay knows is on disk, so inspection needs no extra tooling:
 deliverables/                                         Versioned results written by the browser UI
 ```
 
+To see this state instead of reading JSON, run `relay --root PROJECT serve` for the knowledge map and per-task history, or `relay --root PROJECT export-html --out snapshot.html` for a static, script-free copy. See [Views](docs/RELAY.md#views). To hand a result to someone who will not use Relay, `relay --root PROJECT card TASK` prints a read-only [delivery card](docs/RELAY.md#delivery-card) with the goal, criteria, sources, reported checks and the three states shown separately (`--format html --out card.html` for a page).
+
 A project is a folder. Copy it, commit it, or zip it. Writes use a cooperative lock, and JSON files are replaced atomically. Packet creation and state updates are not a single database transaction, so after a crash, inspect the state before clearing a stale lock.
 
 ## Where this works
@@ -183,8 +192,8 @@ The decision threshold is an initial heuristic, not a calibrated error bound. Se
 Requires Python 3.11+. The only runtime dependency is PyYAML, and no model API is needed.
 
 ```sh
-git clone https://github.com/milo-ve/relay-okf-icm.git
-cd relay-okf-icm
+git clone https://github.com/milo-ve/relay-entry-format.git
+cd relay-entry-format
 python3 -m venv .venv
 source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install -e .
@@ -206,36 +215,70 @@ relay init ./my-project --name "My project"
 relay --root ./my-project serve
 ```
 
-`init` refuses to overwrite an existing `.context/`. Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
+`init` refuses to overwrite an existing `.context/`. For task-only use, `relay init ./my-project --minimal` writes a one-stage `config.json`, which makes every packet smaller (see [Minimal workspace](docs/RELAY.md#minimal-workspace)). Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
 
-### Or use the CLI
+### Adapt an existing workspace with a skill
 
-```sh
-relay start faq --goal "Draft a source-backed pricing FAQ" \
-  --accept "Each commercial statement cites the current policy" \
-  --select inputs/pricing-current.md --kind draft \
-  --owner collaborator --reviewer milo
-relay context faq --out faq-context.md
-```
-
-Work in your assistant, then save the deliverable and its evidence as separate files:
+The repo and Python package include the `relay-workspace` assistant skill at
+[`src/okf_icm/skills/relay-workspace/SKILL.md`](src/okf_icm/skills/relay-workspace/SKILL.md).
+After installing the CLI, install the skill into your assistant's skills directory.
+For Codex, for example:
 
 ```sh
-relay submit faq --output faq.md --evidence observed-checks.md \
-  --checks "Compared each commercial answer with the policy" \
-  --questions "Cancellation terms remain unspecified" \
-  --next "Milo reviews the draft against the acceptance criteria"
-relay show faq
+relay skill --to ~/.codex/skills
 ```
 
-Review using the real `submission_id` from that output:
+In your target workspace, ask your assistant: **Use $relay-workspace to adapt this
+workspace to Relay, saving its previous layout first.** Reload skills in your
+assistant if necessary. Installing the package or copying the repo alone never
+modifies another workspace. You can also run the adaptation directly:
 
 ```sh
-relay review faq --submission ACTUAL_SUBMISSION_ID --decision accept \
-  --actor milo --note "Reviewed this version against the designated source"
+relay --root ./my-project workspace                     # preview, no writes
+relay --root ./my-project workspace --apply --name "My project"
 ```
 
-Task outputs must be separate from selected inputs and control files. This release handles proposal handoffs. Folding an accepted result into a canonical source is a separate action.
+Before changes, it saves the previous layout and exact originals of files it will
+modify under `.relay-backups/workspace-*/`. It appends guidance to `AGENTS.md`,
+adds ignore rules, and initializes `.context` only if absent. It keeps source
+files in place and preserves existing controls, runs, tasks and stage graphs.
+An incompatible existing workspace is refused. Repeating a completed adaptation
+does not duplicate the guidance or backup. Backups cover modified files and the
+layout, not all project contents. See [workspace adaptation](docs/RELAY.md#workspace-adaptation)
+for rollback and privacy limits.
+
+### Portable REF skill (implementation candidate)
+
+The bundled `ref` skill covers preparation, task operations and resuming the same
+task in another assistant. Install the complete folder into an explicit destination:
+
+```sh
+relay skill --name ref --to .agents/skills       # Codex project skill: $ref
+relay skill --name ref --to .claude/skills       # Claude Code project skill: /ref
+relay skill --name ref --zip dist/ref.zip        # complete folder, for upload/copy
+relay skill --name ref --manual dist/ref-manual.md  # standalone guide + return template
+```
+
+Paths and invocation syntax follow the client documentation
+([Codex](https://learn.chatgpt.com/docs/build-skills),
+[Claude Code](https://code.claude.com/docs/en/skills)); observed cross-client
+compatibility remains a separate release gate. See the
+[validation record](docs/ref-validation.md). `/REF` uppercase is not a promised
+universal command. Installation never prepares a workspace or changes global
+configuration. Different existing skill contents are refused, including customized
+references. Inspect visible local/global copies if discovery is ambiguous.
+`relay skill --to DIRECTORY` still installs `relay-workspace` by default.
+
+For a requested Claude instruction bridge, preview
+`relay --root PROJECT workspace --claude`, then add `--apply` to back up and
+append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
+scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
+reorganization, MCP and publishing are later deliveries in the
+[implementation plan](docs/ref-command-plan.md).
+
+### CLI walkthrough
+
+To walk one task through `start`, `context`, `submit`, and `review` with the CLI, see the [CLI walkthrough](docs/WALKTHROUGH.md).
 
 ## Security boundaries
 
@@ -267,7 +310,11 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 
 ## Documentation
 
+- [REF v1, Relay Entry Format](docs/REF.md): the entry, controls, and packet shape.
 - [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
+- [Adopting Relay](docs/ADOPTION.md): setup practices and which interface suits which audience. Recommendations only, with no measured savings.
+- [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
+- [CLI walkthrough](docs/WALKTHROUGH.md): one task from `start` to `review`, command by command.
 - [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
 - [Product proposition](docs/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/relay-operational-backcast.md), and [first collaborator experiment](docs/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
 

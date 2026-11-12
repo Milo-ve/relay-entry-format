@@ -10,7 +10,7 @@ from . import scaffold
 from .storage import ContextError, atomic_write, contained, digest, identifier, json_text, now, read_json, read_text
 
 
-def initialize(root: Path, name: str) -> dict:
+def initialize(root: Path, name: str, minimal: bool = False) -> dict:
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     destination = root / ".context"
@@ -18,15 +18,15 @@ def initialize(root: Path, name: str) -> dict:
         raise ContextError(".context already exists; initialization never overwrites an existing workspace.")
     temp = Path(tempfile.mkdtemp(prefix=".context-init-", dir=root))
     try:
-        for path, content in scaffold.files(name).items():
+        for path, content in scaffold.files(name, minimal).items():
             atomic_write(temp / path, content)
-        atomic_write(temp / "config.json", json_text(scaffold.config(name)))
+        atomic_write(temp / "config.json", json_text(scaffold.config(name, minimal)))
         (temp / "runs").mkdir()
         temp.rename(destination)
     finally:
         if temp.exists():
             shutil.rmtree(temp)
-    return {"workspace": str(destination), "name": name}
+    return {"workspace": str(destination), "name": name, **({"minimal": True} if minimal else {})}
 
 
 class Workspace:

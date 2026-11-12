@@ -3,6 +3,7 @@
 Read README.md and docs/RELAY.md. The original stage protocol is in docs/PROTOCOL.md.
 
 - Runtime code lives in `src/okf_icm`; retain the `okf-icm` entry point for compatibility.
+- The entry, controls and packet shape are specified in `docs/REF.md` (REF, Relay Entry Format). Change `docs/REF.md` together with any change to them. REF v1 adds no on-disk version marker; do not add one to existing projects.
 - Keep the core provider-neutral. Jev is optional, explicit, and cannot grant permission or weaken required review.
 - Preserve existing project state. Never silently migrate stage graphs or fabricate checkpoints.
 - Distinguish selected source versions, substantive verification, and actual acceptance.
