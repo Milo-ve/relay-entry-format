@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "Morrowglass Kilnworks (synthetic)",
+  "stages": [
+    {
+      "id": "work",
+      "needs": [],
+      "contract": ".context/stages/work/CONTEXT.md",
+      "requires_evidence": true
+    }
+  ]
+}

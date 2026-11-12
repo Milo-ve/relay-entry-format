@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "name": "Fernwood Metrics (synthetic)",
+  "stages": [
+    {
+      "id": "01-define",
+      "needs": [],
+      "contract": ".context/stages/01-define/CONTEXT.md",
+      "requires_evidence": false
+    },
+    {
+      "id": "02-research",
+      "needs": [
+        "01-define"
+      ],
+      "contract": ".context/stages/02-research/CONTEXT.md",
+      "requires_evidence": false
+    },
+    {
+      "id": "03-plan",
+      "needs": [
+        "02-research"
+      ],
+      "contract": ".context/stages/03-plan/CONTEXT.md",
+      "requires_evidence": false
+    },
+    {
+      "id": "04-produce",
+      "needs": [
+        "03-plan"
+      ],
+      "contract": ".context/stages/04-produce/CONTEXT.md",
+      "requires_evidence": false
+    },
+    {
+      "id": "05-validate",
+      "needs": [
+        "04-produce"
+      ],
+      "contract": ".context/stages/05-validate/CONTEXT.md",
+      "requires_evidence": true
+    },
+    {
+      "id": "06-consolidate",
+      "needs": [
+        "05-validate"
+      ],
+      "contract": ".context/stages/06-consolidate/CONTEXT.md",
+      "requires_evidence": false
+    }
+  ]
+}

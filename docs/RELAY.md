@@ -24,6 +24,7 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill [--name ref] --zip FILE` | Export the complete skill folder as a new ZIP; never overwrite. |
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
+| `navigate GOAL [--stage ID] [--max-chars N] [--limit N]` | Experimental read-only knowledge-source suggestions; review before explicit selection. See [Navigation](#navigation-experimental). |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. `list --stale` keeps only tasks whose inputs changed since their snapshot and combines with `--brief`; it adds a one-line hint on stderr, so the JSON on stdout is unchanged. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -119,6 +120,76 @@ Entry, controls and packets follow [REF v1](REF.md). Every task includes `.conte
 Full-file SHA-256 hashes identify byte versions even for section selections. Selected files are bounded by the existing 1 MB reader and common-secret-path exclusions. The rendered packet has a character budget and fails before task creation if exceeded. No required source is silently omitted. These exclusions are not comprehensive secret detection.
 
 Packets are frozen JSON with a hash over sorted-key JSON excluding `packet_id`. Each packet includes a brief, route, files, task ID, and revision. The Markdown export frames source contents as JSON strings. Hashes detect changes/corruption, not authenticated identity or malicious rewriting of all records together.
+
+
+## Navigation (experimental)
+
+```sh
+relay --root PROJECT navigate "Explain annual refunds" --stage 04-produce
+relay --root PROJECT navigate "Explain annual refunds" --max-chars 6000 --limit 5
+```
+
+This command suggests knowledge concepts only, without a model call. It creates no task,
+packet, checkpoint or file and takes no writer lock. Review the returned `select` values,
+then pass the ones you actually need to `start --select`. Explicit selection still validates
+each source and the full packet. **This implementation passes the original synthetic gate
+but fails the independent held-out gap gate**: unrelated concepts can appear for an
+uncovered goal. Do not treat a suggestion as proof of coverage. See [results](navigate-results.md).
+
+Defaults accepted on 2026-11-11 are **12,000 source packet characters**, **2,000 raw characters
+per source** (whole file or section), no budgets by type, and `--stage` included. `--limit`
+defaults to 8 and bounds both returned candidates and displayed omissions (1–100). `--max-chars`
+accepts 1–1,000,000. These limits apply to suggestions only; the existing `start` default stays
+32,000 characters for the **whole** packet. Nothing is truncated to fit. Oversized candidates
+are named in `left_out` with a reason. Above 26,000 a note warns about the full packet budget.
+
+`budget.used` counts the exact additional characters of the suggested file records in a
+task packet's indented JSON, including JSON escaping, metadata signals, hashes and separators.
+Controls are not charged here; `controls_raw_chars` reports their raw text separately,
+without claiming to estimate the brief, route or total packet overhead. See the
+[measurements and accepted budgets](navigate-budgets.md).
+
+The walk filters spelled and resolved paths before content reads, prunes denied directories,
+and never follows directory symlinks. Denied, sensitive, escaping, invalid and unreadable
+concepts are omitted from output and counts. It uses valid concepts directly rather than
+trusting a possibly stale generated index. A note counts only permitted concepts absent
+from their local index.
+
+Ranking uses accent-folded Unicode goal tokens, fixed English/Spanish function-word lists,
+field weights (tags 12, title 10, headings 6, description 5, body 1), and a bounded inverse
+frequency weight. Strong seeds reach 35% of the best seed score, with a floor of 10.
+One-hop links add candidates; heavily linked hubs (more than 25% of the permitted bundle,
+with a floor of 3 incoming links) require goal support in the anchor or fragment. There is
+no recursive walk, synonym model or translation. A language mismatch can leave a gap.
+
+`--stage` reads only backticked concept paths in that stage contract's exact `Inputs` section.
+It accepts exact headings or unambiguous heading slugs, emits exact titles, and places
+contract-named concepts first. It does not open a run or satisfy stage dependencies. Entry
+and project backticked paths provide only a small boost to goal-supported seeds. Contract
+prose and source instructions are never executed. Non-knowledge artifacts are not navigated.
+
+Recorded lifecycle, freshness and trust appear on candidates; hazardous candidates also
+carry explicit warnings. A hazard whose matched terms stable candidates already cover is
+left out, except for an explicitly contract-named input, which remains flagged. Stable here
+means stable lifecycle, not stale, and carrying a recorded verification signal; this does
+not independently verify the source. Freshness is clock-dependent.
+
+Sections use exact ATX headings and the existing fence rules. Concentrated heading matches
+or explicit fragments narrow a selection; distributed matches usually keep the whole file.
+Duplicate heading titles fall back to the whole file with a warning and still obey the cap.
+`candidates` include `select`, raw and packet characters, score, `why`, signals and warnings.
+`left_out` carries the same data plus a reason; `left_out_remaining` counts other permitted
+omissions. `gaps` reports unmatched goal terms, no seed reaching the bar, no fitting candidate,
+and relevant permitted unresolved links. A gap is lexical advice, not a completeness check.
+Generated sentences carry stable English `code`, `params`, and localized `text` (English or
+Spanish); JSON keys and recorded signal values remain English. Output has sorted keys and
+no timestamp. Identical files on the same side of every freshness deadline yield identical
+output. No Jev option is included. Existing controls, packet formats and saved state are unchanged.
+
+The CLI also prints a localized experimental warning on stderr, leaving stdout as
+JSON for tools. The bundled `ref` skill uses navigation as an inspection step
+before explicit selection; it requires reading candidates for factual support
+and never treats suggestions as a completed packet or an answered question.
 
 ## Routing
 

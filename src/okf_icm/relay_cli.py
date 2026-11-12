@@ -18,6 +18,11 @@ def parser():
     p.add_argument("--version", action="version", version=__version__)
     p.add_argument("--root", type=Path, default=Path.cwd())
     sub = p.add_subparsers(dest="command", required=True)
+    nav = sub.add_parser("navigate", help="Experimental knowledge-source suggestions; inspect coverage before selecting")
+    nav.add_argument("goal")
+    nav.add_argument("--stage", help="Prioritize knowledge paths named in this stage contract's Inputs section")
+    nav.add_argument("--max-chars", type=int, default=12000, help="Source task-packet characters (controls extra; default 12000)")
+    nav.add_argument("--limit", type=int, default=8, help="Maximum candidates and displayed omissions, 1-100 (default 8)")
     init = sub.add_parser("init", help="Initialize a project without overwriting existing state")
     init.add_argument("path", type=Path, nargs="?")
     init.add_argument("--name", default="Relay project")
@@ -164,7 +169,12 @@ def main(argv=None):
                 atomic_write(args.out, export_html(tasks), exclusive=True)
                 print(json_text({"written": str(args.out), "note": "Contains goals, acceptance state, owners, reviewers and recorded events; no source or packet contents."}), end="")
                 return 0
-            if args.command == "list":
+            if args.command == "navigate":
+                from .navigation import navigate
+                result = navigate(tasks.ws, args.goal, stage=args.stage, max_chars=args.max_chars, limit=args.limit)
+                from .i18n import translator
+                print("relay: " + translator(tasks.language())("nav.experimental"), file=sys.stderr)
+            elif args.command == "list":
                 result = tasks.list()
                 if args.stale:
                     result = [item for item in result if item["freshness"] == "changed"]
@@ -222,7 +232,10 @@ def main(argv=None):
                                               external_ref=args.external_ref)
                     else:
                         raise ContextError("Unknown operation.")
-        print(json_text(result), end="")
+        if args.command == "navigate":
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        else:
+            print(json_text(result), end="")
         # A batch reports every task it could not read or refresh and exits 2, so a script cannot miss it.
         return 2 if args.command == "refresh" and isinstance(result, dict) and result.get("failed") else 0
     except (ContextError, OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:

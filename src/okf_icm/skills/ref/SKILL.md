@@ -34,6 +34,11 @@ Choose the operation from the user's intent:
 - Start, continue, return work, refresh or escalate: read the relevant operation
   in [task workflow](references/workflow.md). Reuse the same task ID and inspect
   current state before mutations. Use the CLI for hashes, packets and receipts.
+- Find sources: use the experimental `relay --root PROJECT navigate 'Goal'`
+  command to suggest knowledge concepts and exact sections. Read the candidates
+  and check support for the requested facts before explicitly selecting sources.
+  Held-out gap detection failed: nearby concepts can be suggested for an uncovered
+  question. Suggestions never establish coverage, verification or acceptance.
 - Review: record only an explicit decision by the assigned reviewer about the
   current exact submission. Doing work or invoking this skill is not acceptance.
 - Organize files: provide an inventory and proposed path map with conflicts and

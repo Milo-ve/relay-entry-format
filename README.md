@@ -88,6 +88,14 @@ Selecting a heading narrows what is sent, but the hash covers the whole file, so
 
 A packet hash detects change or corruption. It does not authenticate who wrote it.
 
+### Finding sources (experimental)
+
+`relay --root PROJECT navigate "Your goal" [--stage ID]` suggests knowledge sources before
+`start --select`, without writing files or calling a model. Defaults are 12,000 source packet
+characters and 2,000 raw characters per source. Review every suggestion: the first implementation
+passes the original synthetic gate but fails held-out gap detection. See [navigation](docs/RELAY.md#navigation-experimental)
+and the [evaluation record](docs/navigate-results.md). It is not a completeness or verification check.
+
 ### Proportional effort
 
 | Profile           | Selected when                                              | Expected work                              |
