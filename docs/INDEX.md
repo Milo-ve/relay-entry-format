@@ -22,6 +22,7 @@ Evidence records (read before making a claim about quality or compatibility):
 - [VALIDATION.md](VALIDATION.md): what the first stage release checked on one machine.
 - [ref-validation.md](ref-validation.md): offline checks versus observed client behavior for the `ref` skill.
 - [navigate-results.md](navigate-results.md): measured results and limits of `relay navigate`.
+- [jev-results.md](jev-results.md): one live shadow run of Jev on synthetic cases, and what it does not show.
 
 History:
 

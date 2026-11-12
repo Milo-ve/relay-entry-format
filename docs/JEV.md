@@ -83,4 +83,4 @@ Relay has no inbox to triage, no latency-sensitive loop and no tool execution to
 
 ## Evidence
 
-Offline tests cover the gate, the limits above and provider failures with mocked responses. They say nothing about Jev's quality on your tasks. The thresholds (0.7 to raise or flag, 0.8 and 0.3 to lower) are starting heuristics from the provider's guidance, not calibrated error bounds. Run `shadow` on real work before choosing `auto`. The original design rationale is in [the archive](archive/relay-adaptive-effort-and-jev.md).
+Offline tests cover the gate, the limits above and provider failures with mocked responses. They say nothing about Jev's quality on your tasks. The thresholds (0.7 to raise or flag, 0.8 and 0.3 to lower) are starting heuristics from the provider's guidance, not calibrated error bounds. One live run on synthetic cases is recorded in [jev-results.md](jev-results.md); it checks the integration, not the thresholds. Run `shadow` on real work before choosing `auto`, and tabulate it with `python examples/jev_shadow_report.py --root PROJECT`. The original design rationale is in [the archive](archive/relay-adaptive-effort-and-jev.md).
