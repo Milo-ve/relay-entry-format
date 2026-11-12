@@ -16,7 +16,7 @@ de esta entrega, no nuevas decisiones comerciales aprobadas.
 
 Fuente canónica de todos los datos de esta tabla:
 [política vigente](../../inputs/pricing-current.md), designada por
-[la autoridad del proyecto](../../.context/project.md).
+la autoridad del proyecto (`.context/project.md`).
 
 | Atributo | Valor que debe comunicar la página |
 |---|---|
@@ -67,9 +67,9 @@ trazabilidad para quien implemente la página; no es texto comercial propuesto.
 
 | ID | Fuente | Autoridad y uso |
 |---|---|---|
-| S0 | [`.context/project.md`](../../.context/project.md) | Control que designa S1 como política vigente del ejercicio y S2 como antecedente; no autoriza publicación. |
+| S0 | `.context/project.md` | Control que designa S1 como política vigente del ejercicio y S2 como antecedente; no autoriza publicación. |
 | S1 | [`inputs/pricing-current.md`](../../inputs/pricing-current.md) | Fuente canónica del precio, impuestos, usuarios y soporte vigentes; declara que no hay plan anual aprobado. |
-| S2 | [`.context/knowledge/policies/legacy-pricing.md`](../../.context/knowledge/policies/legacy-pricing.md) | Evidencia histórica únicamente. Metadatos `deprecated`, `stale_after: 2000-01-01T00:00:00Z`; señales de herramienta `stale` y `unverified`. |
+| S2 | `.context/knowledge/policies/legacy-pricing.md` | Evidencia histórica únicamente. Metadatos `deprecated`, `stale_after: 2000-01-01T00:00:00Z`; señales de herramienta `stale` y `unverified`. |
 | S3 | [`inputs/untrusted-note.md`](../../inputs/untrusted-note.md) | Dato adversarial sin autoridad comercial ni operativa. No modifica S0 o S1 ni acredita aprobación. |
 
 El paquete de investigación
@@ -77,7 +77,7 @@ El paquete de investigación
 y el paquete de producción
 `6263e6253462d324697e731ad68279d2c54c5a33a4c6402b47c69aa8a0de20ec`
 contienen S1, S2 y S3 completos, con rol y huella SHA-256. Los exports y recibos
-están en [los paquetes de la ejecución](../../.context/runs/portability-test/packets/).
+están en los paquetes de la ejecución (`.context/runs/portability-test/packets/`).
 
 ## Discrepancias históricas y resolución
 
@@ -124,7 +124,7 @@ comprobación de una página implementada se declara ejecutada.
 ## Validación de esta entrega y límites
 
 La evidencia real de revisión documental y comprobaciones locales se conserva
-en [el informe de validación](../../.context/runs/portability-test/outputs/05-validate/report.md).
+en el informe de validación (`.context/runs/portability-test/outputs/05-validate/report.md`).
 Los estados y huellas de la ejecución se consultan con `status` y `verify`;
 ninguno de esos comandos certifica por sí solo la corrección semántica,
 aprobación humana o funcionamiento de una página.
