@@ -8,6 +8,7 @@ Current behavior:
 - [RELAY.md](RELAY.md): exact behavior of every `relay` command, routing, review and settings. Read when changing or using task commands.
 - [PROTOCOL.md](PROTOCOL.md): conventions of the six-stage `okf-icm` workflow. Read when working on stage runs, checkpoints or knowledge.
 - [CLI.md](CLI.md): `okf-icm` commands and flags. Read when running a stage command.
+- [JEV.md](JEV.md): when Jev runs, when it is skipped, what is sent and what it can never do. Read when enabling or changing Jev.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md): why a command was refused and what to run next. Read when a command refuses or a task looks out of date.
 
 Guides:
@@ -21,10 +22,6 @@ Evidence records (read before making a claim about quality or compatibility):
 - [VALIDATION.md](VALIDATION.md): what the first stage release checked on one machine.
 - [ref-validation.md](ref-validation.md): offline checks versus observed client behavior for the `ref` skill.
 - [navigate-results.md](navigate-results.md): measured results and limits of `relay navigate`.
-
-Design rationale:
-
-- [relay-adaptive-effort-and-jev.md](relay-adaptive-effort-and-jev.md): why effort routing and Jev work as they do. Read when changing either.
 
 History:
 

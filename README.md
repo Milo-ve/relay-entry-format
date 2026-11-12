@@ -129,7 +129,7 @@ The original `okf-icm` command remains for the detailed six-stage workflow. Rela
 
 ## Optional Jev
 
-Relay can ask TypeSafe's [System One](https://docs.typesafe.ai/api/system-one) model for a second opinion on routing, only when you pass `--jev shadow` or `--jev route`. It can raise effort and can never clear a blocker or skip review. The goal and selected non-control sources are sent to the provider. See [Routing](docs/RELAY.md#routing) and [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md).
+Relay can ask TypeSafe's [System One](https://docs.typesafe.ai/api/system-one) model for a fast second opinion. It is off by default. Pass `--jev shadow` or `--jev route` on a task, or enable it once for a workspace with the `jev_mode` setting; then it is consulted only where the rules leave a question open, and every call or skip is recorded with its reason. It adds signals for a person and can raise effort. It never grants permission, accepts work, clears a blocker or skips review. Content it judges is sent to the provider. See [Jev](docs/JEV.md).
 
 ## Getting started
 

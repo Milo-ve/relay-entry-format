@@ -237,7 +237,11 @@ Each task allows one escalation, to Investigative. Further effort means reassess
 
 No automatic classifier discovers every risk, policy conflict, or missing prerequisite. Review the selected route and escalate on evidence. The task's boundaries and host instructions remain applicable regardless of effort.
 
-`--jev shadow` and `--jev route` explicitly authorize a request containing the goal and selected non-control source contents to TypeSafe's documented endpoint. Control files are excluded from the provider request. The adapter asks a Choice about work type and a Noul about conflicting relevant claims. Route mode can raise effort; it cannot lower a rule-selected profile or waive prerequisites/review. The threshold is an initial heuristic, not a measured error bound.
+`--jev shadow` and `--jev route` explicitly authorize a request containing the goal and selected non-control source contents to TypeSafe's documented endpoint. Control files are excluded from the provider request. The adapter asks a Choice about work type and a Noul about conflicting relevant claims. Route mode can raise effort; with the flag it cannot lower a rule-selected profile, and it never waives prerequisites or review. The threshold is an initial heuristic, not a measured error bound.
+
+A workspace can also enable Jev once, with the `jev_mode` [setting](#settings), so it runs where it is useful without a flag on each command. `shadow` records judgments and changes nothing; `auto` lets them act. Rules still come first: Jev is consulted at `start` only when they end on the conservative default. A blocker, high consequences, a stated `--kind` or a keyword match already decide the route, so no request is made. Every call and every skip is recorded under `route.jev` with `trigger: setting` and a reason: `use-not-enabled`, `rules-decisive`, `nothing-shareable`, `no-key`, `budget-exhausted`. `--jev` on the command overrides the setting in both directions, including `--jev off`.
+
+In `auto` only, a task started with `--risk low` and no stated kind may be lowered from Standard to Direct when Jev classifies it as a bounded transformation with probability 0.8 or more, conflict 0.3 or less, and no source-instruction flag. The reason code is `jev-bounded-transformation`. Review stays required. This is the one case where Jev reduces effort, and the operator's own low-risk declaration is its precondition. See [Jev](JEV.md) for every use and its limits.
 
 The adapter uses a five-second timeout, no automatic retries, rejects redirects, bounds response size, validates returned choices/probabilities, and does not persist the API key. Failure retains rules with a visible reason. A refresh does not reuse or automatically rerun the old provider judgment.
 
@@ -304,6 +308,9 @@ Optional tool settings live in `.context/relay/settings.json`. Relay never creat
 | `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `reassign`, `submit` and `review` are refused without `--expected-revision`. |
 | `deny_paths` | `[]` | Names that may never be selected as a source, in task and stage packets. See below. |
 | `language` | `"en"` | `"en"` or `"es"`: the language of the people-facing views. See [Language](#language). |
+| `jev_mode` | `"off"` | `"off"`, `"shadow"` (record judgments, change nothing) or `"auto"` (let them act within the limits in [Jev](JEV.md)). Enabling it sends content to TypeSafe without a flag on each command. |
+| `jev_uses` | `["route"]` | Which uses are enabled: `route`, `source-scan`, `evaluate`, `rerank`, `dedupe`. |
+| `jev_max_calls` | `5` | Provider requests one command may make, 0 to 50. |
 
 `deny_paths` patterns are matched case-insensitively against the spelled path and against the path it resolves to through links, and against every parent directory. A pattern without a slash matches any one path component (`secrets`, `*.pem`). A pattern with a slash matches the whole path or any parent directory of it (`finance/payroll*`); `*` also crosses slashes. The check runs before a file is read, so a refused `start` creates no task folder, and a `refresh` whose source became denied is refused with nothing changed. A packet taken before the rule is also refused at `context` export. Project controls are not subject to it. This applies only the names you list; it is not a secret scanner, and a denied file can still be pasted into an assistant by hand.
 

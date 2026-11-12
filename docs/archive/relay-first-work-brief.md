@@ -99,7 +99,7 @@ Install the CLI using [the repository README](../../README.md). An activated loc
 
 The initial packet is for the first configured stage, not an automatic authorization to finish every stage. Follow `.context/ENTRY.md`, use the configured contracts, and generate fresh stage packets as the workflow progresses. Make sure sources used in later stages are selected there too. The operator records checkpoints using real packet IDs, outputs, and required evidence. Run `okf-icm run checkpoint --help` for the exact arguments.
 
-The current CLI exposes six stages and supports explicit skips with reasons. Perform only the substantive stages required by the task and contracts; record any permitted skips using `okf-icm run skip --help`. Required validation still needs evidence. Count stage-management time as overhead. A future Relay interface would choose an appropriate profile and automate mechanical work; see [Adaptive effort and Jev](../relay-adaptive-effort-and-jev.md). That automatic selection is not implemented today.
+The current CLI exposes six stages and supports explicit skips with reasons. Perform only the substantive stages required by the task and contracts; record any permitted skips using `okf-icm run skip --help`. Required validation still needs evidence. Count stage-management time as overhead. A future Relay interface would choose an appropriate profile and automate mechanical work; see [Adaptive effort and Jev](relay-adaptive-effort-and-jev.md). That automatic selection is not implemented today.
 
 At a later handoff, use actual state rather than a saved audit summary:
 

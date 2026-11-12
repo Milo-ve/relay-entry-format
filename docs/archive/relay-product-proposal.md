@@ -35,7 +35,7 @@ When a recorded dependency changes, the result displays **Review needed** with a
 
 The broad company workspace remains a possible destination. The entry point is a recurring handoff that can be improved and measured now.
 
-Apply the operating principle across context, reasoning, workflow, and verification. Routine work should take a short path; uncertainty and consequential changes should trigger appropriate investigation or review. The controller, execution profiles, and optional role of Jev are specified in [Adaptive effort and Jev](../relay-adaptive-effort-and-jev.md). These mechanisms are proposed, not implemented by the current CLI.
+Apply the operating principle across context, reasoning, workflow, and verification. Routine work should take a short path; uncertainty and consequential changes should trigger appropriate investigation or review. The controller, execution profiles, and optional role of Jev are specified in [Adaptive effort and Jev](relay-adaptive-effort-and-jev.md). These mechanisms are proposed, not implemented by the current CLI.
 
 The [operational backcast](relay-operational-backcast.md) works backward from dependable daily use to the capability gates, operating responsibilities, and first seven working days needed to get there.
 

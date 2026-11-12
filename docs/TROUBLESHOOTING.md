@@ -142,7 +142,7 @@ While any one task is unreadable, `relay list` stops with this error. `relay sho
 
 ## If Jev is unavailable
 
-Jev is optional. On any failure, such as a missing `TYPESAFE_API_KEY`, a timeout or a rejected response, Relay keeps the rules-only route and records the reason in the route (`relay show TASK`, under `route.jev`). Nothing is retried and nothing blocks. Start the task without `--jev` if you do not want the provider call.
+Jev is optional. On any failure, such as a missing `TYPESAFE_API_KEY`, a timeout or a rejected response, Relay keeps the rules-only route and records the reason in the route (`relay show TASK`, under `route.jev`). Nothing is retried and nothing blocks. Start the task without `--jev` if you do not want the provider call; if the workspace enabled Jev with the `jev_mode` setting, pass `--jev off`. When the setting is on and Jev was not consulted, `route.jev` shows `status: skipped` and why: see [Jev](JEV.md).
 
 ## What the record can and cannot vouch for
 

@@ -4,7 +4,7 @@
 
 **Status:** Architecture proposal and literature investigation. No model routing, Jev integration, or live benchmark was implemented or executed.
 
-**Implementation update (0.3.0):** the local task layer now implements effort recommendations, optional Jev shadow/raise-only routing, context export, result/evidence submission, and version-specific local review. The original proposal below records the design; use [the executable protocol](RELAY.md) and [README](../README.md) for current behavior. Worker execution, compute enforcement, and live Jev benchmarking remain unimplemented or unperformed.
+**Implementation update (0.3.0):** the local task layer now implements effort recommendations, optional Jev shadow/raise-only routing, context export, result/evidence submission, and version-specific local review. The original proposal below records the design; use [the executable protocol](../RELAY.md) and [README](../../README.md) for current behavior. Worker execution, compute enforcement, and live Jev benchmarking remain unimplemented or unperformed.
 
 ## 1. The clarified design intent
 
@@ -18,9 +18,9 @@
 
 The structure should allocate effort in proportion to a task's demands. Small, well-understood work should use little context, reasoning, ceremony, and coordination. Broad, uncertain work should receive investigation, planning, appropriate computation, and stronger checks.
 
-This refines the [Relay proposal](archive/relay-product-proposal.md): adaptive effort is part of the operating design, while a work brief is the user-facing way to expose the task and its boundaries.
+This refines the [Relay proposal](relay-product-proposal.md): adaptive effort is part of the operating design, while a work brief is the user-facing way to expose the task and its boundaries.
 
-For the sequence from current artifacts to daily team operation, see the [operational backcast](archive/relay-operational-backcast.md).
+For the sequence from current artifacts to daily team operation, see the [operational backcast](relay-operational-backcast.md).
 
 Total effort includes context gathering, computation, retries, coordination, and human review. Task requirements include quality and operating constraints. Minimizing the first model call can increase total work through retries and review. Always using maximum effort can waste resources on routine work.
 
@@ -159,7 +159,7 @@ Reuse a routing decision only while its relevant task, source snapshot, policy, 
 
 ## 9. What this means for the current CLI
 
-The [CLI reference](CLI.md) and implementation support `run skip --reason`. The [protocol](PROTOCOL.md) also supports an editable dependency graph, with explicit migration required when an existing run's stage set changes.
+The [CLI reference](../CLI.md) and implementation support `run skip --reason`. The [protocol](../PROTOCOL.md) also supports an editable dependency graph, with explicit migration required when an existing run's stage set changes.
 
 Therefore the six-stage example need not imply that every task must perform six stages of substantive work. An operator can explicitly skip an unnecessary stage with a real reason, subject to the task contract. Skipping validation that policy requires is not a valid optimization.
 

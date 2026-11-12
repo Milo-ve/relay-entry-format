@@ -234,7 +234,7 @@ Local preferred-assistant exports cannot provide remote cancellation or recall. 
 
 ## 7. Where Jev and additional agents enter the backcast
 
-The [adaptive-effort design](../relay-adaptive-effort-and-jev.md) owns the detailed research and controller proposal. This backcast adds sequencing:
+The [adaptive-effort design](relay-adaptive-effort-and-jev.md) owns the detailed research and controller proposal. This backcast adds sequencing:
 
 | Optional branch | Earliest useful point | Requirement before operational use |
 |---|---|---|
@@ -287,5 +287,5 @@ The destination remains the same: a collaborator can enter a shared context, und
 ## Related documents
 
 - [Product proposition and strategy](relay-product-proposal.md).
-- [Adaptive effort and Jev](../relay-adaptive-effort-and-jev.md).
+- [Adaptive effort and Jev](relay-adaptive-effort-and-jev.md).
 - [First collaborator work brief](relay-first-work-brief.md).
