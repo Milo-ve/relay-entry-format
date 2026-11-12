@@ -13,6 +13,7 @@ Current behavior:
 
 Guides:
 
+- [TRY.md](TRY.md): 20-minute first trial on a real folder, with what to report back.
 - [WALKTHROUGH.md](WALKTHROUGH.md): one task from `start` to `review`, command by command.
 - [ADOPTION.md](ADOPTION.md): setup practices and which interface suits which audience. Recommendations, not measurements.
 - [EVALUATION.md](EVALUATION.md): prompts and scorecard for the synthetic stage demo across assistants.

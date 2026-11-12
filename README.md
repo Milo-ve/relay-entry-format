@@ -165,6 +165,10 @@ relay --root ./my-project serve
 
 Two optional skills connect an assistant to a workspace: `relay-workspace` adapts an existing folder, and `ref` (an implementation candidate) covers task handoffs and resuming work in another assistant. Installing one never modifies a workspace. See [Install the assistant skills](docs/ADOPTION.md#install-the-assistant-skills).
 
+### First trial on your own project
+
+To try Relay on a real folder in about 20 minutes, and report what you found, follow [Try Relay on a project](docs/TRY.md).
+
 ### CLI walkthrough
 
 To walk one task through `start`, `context`, `submit`, and `review` with the CLI, see the [CLI walkthrough](docs/WALKTHROUGH.md).
