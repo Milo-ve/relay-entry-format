@@ -25,6 +25,7 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
 | `navigate GOAL [--stage ID] [--max-chars N] [--limit N]` | Experimental read-only knowledge-source suggestions; review before explicit selection. See [Navigation](#navigation-experimental). |
+| `tidy [--path DIR] [--brief] [--out FILE]` | Read-only clutter report: duplicates, unlinked files, broken links, oversized entry files. Suggests; changes nothing. See [Tidy](#tidy). |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. `list --stale` keeps only tasks whose inputs changed since their snapshot and combines with `--brief`; it adds a one-line hint on stderr, so the JSON on stdout is unchanged. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -192,6 +193,28 @@ The CLI also prints a localized experimental warning on stderr, leaving stdout a
 JSON for tools. The bundled `ref` skill uses navigation as an inspection step
 before explicit selection; it requires reading candidates for factual support
 and never treats suggestions as a completed packet or an answered question.
+
+## Tidy
+
+`relay --root PROJECT tidy` reports clutter and suggests what to do about it. It reads only: it changes, moves and deletes nothing, takes no lock, and calls no model. A person or assistant applies the suggestions, with version control as the undo. There is no `--apply`.
+
+Without `--path` it scans `.context/knowledge`. `--path DIR` (repeatable, relative to `--root`) scans any folder or Markdown file, and needs no workspace, so a plain folder of notes can be checked. Only `.md` files are read.
+
+| Finding             | Reported when                                                                                             | Suggestion                                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `duplicate-file`    | Two or more files have the same content after trimming line ends                                          | Keep the one others link to; delete the rest |
+| `duplicate-section` | Two sections of at least 12 distinct words share 80% of them                                              | Keep one; replace the other with a link      |
+| `broken-link`       | A relative link outside code fences points at nothing                                                     | Fix or remove the link                       |
+| `orphan`            | No scanned file, and no root `README.md`, `AGENTS.md` or `CLAUDE.md`, links to the file or to its folder  | Add to an index, or archive or delete        |
+| `oversize-entry`    | The four controls together, or a root `AGENTS.md` or `CLAUDE.md`, exceed 2,500 characters                 | Move detail to a document read when needed   |
+| `invalid-concept`   | A file in the knowledge bundle has invalid metadata                                                       | Fix it or move it out of the bundle          |
+| `review-signal`     | A concept's own metadata says not stable, stale or unverified                                             | Verify and update, or retire                 |
+
+`index.md`, `README.md` and `log.md` are never orphans. Section comparison counts distinct words after the same folding and stop-word list as navigation; it is lexical, so two sections that say the same thing in different words are not found, and two that share vocabulary but disagree are. Read both before merging. Beyond 2,000 sections the comparison stops and the report says so.
+
+`deny_paths` and the common secret-path rules apply: excluded files are not read, not counted and not named, including as link targets. Naming an excluded folder in `--path` is refused. Suggestions follow the `language` setting; kinds and JSON keys stay in English.
+
+`--brief` keeps kind, paths and suggestion. `--out FILE` writes one Markdown note with a checkbox per suggestion, to a new file outside `.context`; it never overwrites.
 
 ## Routing
 

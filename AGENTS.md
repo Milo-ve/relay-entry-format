@@ -9,7 +9,7 @@ Start here. Do not read `README.md` or whole documents by default: open `docs/IN
 
 Sessions: one task each. Ongoing work is a Relay task in the local `.context`: `relay list --brief` shows it and `relay context TASK` exports its bounded packet. End by recording the result or a short note.
 
-Effort: a route with `reasoning` low or medium suits a small or standard model, high a frontier model. With no task, use a standard model. This is advice; nothing enforces it.
+Effort: route `reasoning` low or medium suits a small or standard model, high a frontier one; with no task, a standard one. Advice only.
 
 Rules:
 
@@ -22,4 +22,4 @@ Rules:
 - Use synthetic fixtures. Live model results and user savings require separate observed evidence.
 - Local `.context`, private packets, API keys, virtual environments, and generated deliverables must stay out of public Git history.
 - This is a loopback trusted-user prototype; do not claim organizational authorization or managed compute enforcement.
-- A new file in `docs/` needs a line in `docs/INDEX.md`; `tests/test_docs_index.py` enforces it and this file's size.
+- After changing docs, run `relay --root . tidy --path docs --brief` and act on it. A new doc needs a line in `docs/INDEX.md`; `tests/test_docs_index.py` enforces both and this file's size.

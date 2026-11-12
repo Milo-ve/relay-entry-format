@@ -41,8 +41,10 @@ Choose the operation from the user's intent:
   question. Suggestions never establish coverage, verification or acceptance.
 - Review: record only an explicit decision by the assigned reviewer about the
   current exact submission. Doing work or invoking this skill is not acceptance.
-- Organize files: provide an inventory and proposed path map with conflicts and
-  reference impact. This version has no physical-reorganization executor or
+- Organize files: run `relay --root PROJECT tidy [--path DIR]` for a read-only
+  report of duplicates, unlinked files, broken links and oversized entry files,
+  then propose a path map with conflicts and reference impact. Read both copies
+  before merging. This version has no physical-reorganization executor or
   recovery command. Do not present onboarding as moving or archiving sources.
 
 Keep existing stage runs on `okf-icm`; never create stage checkpoints to represent

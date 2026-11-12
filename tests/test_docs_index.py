@@ -42,12 +42,15 @@ class DocsIndexTest(unittest.TestCase):
         for path in [ROOT / "README.md", ROOT / "AGENTS.md", *sorted(DOCS.rglob("*.md"))]:
             for value in targets(path):
                 target = (path.parent / value.split("#")[0]).resolve()
-                # Local workspace state is never in Git, so its links cannot be checked here.
-                if ".context" in target.parts:
-                    continue
                 if not target.exists():
                     broken.append(f"{path.relative_to(ROOT).as_posix()} -> {value}")
         self.assertEqual(broken, [])
+
+    def test_tidy_finds_no_duplicate_orphan_or_broken_link_in_docs(self):
+        from okf_icm import tidy
+        blocking = {"duplicate-file", "orphan", "broken-link"}
+        found = [item for item in tidy.scan(ROOT, ["docs"])["findings"] if item["kind"] in blocking]
+        self.assertEqual(found, [])
 
 
 if __name__ == "__main__":
