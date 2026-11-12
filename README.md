@@ -71,57 +71,13 @@ flowchart LR
 | Return     | `relay submit`  | Binds the result and evidence to the current packet and records the checks, open questions, and next action.                   |
 | Review     | `relay review`  | Records a decision on one specific submission by the assigned reviewer.                                                        |
 
-`relay list` and `relay show` recompute freshness at any time. `relay refresh` and `relay escalate` are covered below.
+`relay list` and `relay show` recompute freshness at any time.
 
-### What a packet carries
-
-A packet follows [REF v1](docs/REF.md).
-
-| Part     | Source                                                        | Treatment                                                                     |
-| -------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Controls | `.context/ENTRY.md`, `policy.md`, `project.md`, `config.json` | Instructions for the workflow. Always included.                               |
-| Brief    | Task fields                                                   | Goal, acceptance criteria, owner, reviewer, boundaries, kind, risk, blockers. |
-| Route    | Effort policy                                                 | Selected profile, decision basis, and any escalation.                         |
-| Sources  | `--select path` or `--select path#Exact Heading`              | Data, framed as JSON strings. Knowledge keeps its metadata signals.           |
-
-Selecting a heading narrows what is sent, but the hash covers the whole file, so any byte change to the source is detected. Selected files are limited to 1 MB, common secret paths are refused, and the rendered packet has a character budget. Relay fails before creating the task rather than silently omitting a required source.
-
-A packet hash detects change or corruption. It does not authenticate who wrote it.
-
-### Proportional effort
-
-| Profile           | Selected when                                              | Expected work                              |
-| ----------------- | ---------------------------------------------------------- | ------------------------------------------ |
-| **Direct**        | An explicit transformation with low consequences           | Do the work and a relevant check.          |
-| **Standard**      | The default                                                | Plan, work, check, hand off where needed.  |
-| **Investigative** | Diagnosis, design, a conflict signal, or high consequences | Investigate and validate more strongly.    |
-| **Clarify**       | An explicit missing prerequisite                           | Resolve what is missing before continuing. |
-
-Routing uses explicit task kind and risk, blocker flags, and conservative request-text heuristics under policy `relay-effort-v1`. These are recommendations to the person and assistant doing the work. They do not control an external model's compute, grant permission, or waive required review. No classifier finds every risk, so review the selected route and escalate on evidence.
-
-```sh
-relay start heading --goal "Fix the heading spelling" --accept "Spelling corrected" \
-  --kind transform --risk low --select draft.md
-relay escalate heading --note "The change revealed conflicting terminology"
-```
-
-Each task allows one escalation, to Investigative. Further effort means reassessing the scope.
-
-### When inputs change
-
-```sh
-relay show faq                      # freshness is recomputed
-relay refresh faq --note "The designated policy changed; reassess affected answers"
-relay context faq --out faq-context-v2.md
-```
-
-Freshness covers the selected inputs, the controls, and the submitted output and evidence. A change makes any acceptance due for review. `refresh` takes a new snapshot and clears the current submission and acceptance, while the old packets, receipts, and review events remain as history. A refresh records that inputs changed. It does not mean the new facts were validated.
-
-### Review is version-specific
-
-Every submission has a `submission_id` derived from its result and evidence receipts, packet reference, checks, questions, next action, and time. A review names one ID and the assigned reviewer. Editing the output afterwards changes what the current version is, and the earlier acceptance no longer applies to it.
-
-Reviewer names are self-recorded. Relay shows who claims to have reviewed, not who actually did.
+- **Packet.** The controls plus the sources you select, each hashed over the whole file. A packet that exceeds its character budget fails; nothing is silently omitted. See [REF v1](docs/REF.md).
+- **Effort.** Rules recommend Direct, Standard, Investigative, or Clarify, and each task allows one escalation. These are recommendations, not compute limits or permission. See [Routing](docs/RELAY.md#routing).
+- **Freshness.** A change to a selected input, a control, the output, or the evidence makes the task due for review. `relay refresh` takes a new snapshot and keeps the history. See [Result and acceptance](docs/RELAY.md#result-and-acceptance).
+- **Review.** A decision names one exact submission. Editing the output afterwards means the earlier acceptance no longer applies to it. Reviewer names are self-recorded.
+- **Finding sources (experimental).** `relay navigate` suggests knowledge sources, by default without calling a model. It is not a completeness check. See [Navigation](docs/RELAY.md#navigation-experimental) and the [evaluation record](docs/navigate-results.md).
 
 ## Observability and portability
 
@@ -139,7 +95,7 @@ Everything Relay knows is on disk, so inspection needs no extra tooling:
 deliverables/                                         Versioned results written by the browser UI
 ```
 
-To see this state instead of reading JSON, run `relay --root PROJECT serve` for the knowledge map and per-task history, or `relay --root PROJECT export-html --out snapshot.html` for a static, script-free copy. See [Views](docs/RELAY.md#views). To hand a result to someone who will not use Relay, `relay --root PROJECT card TASK` prints a read-only [delivery card](docs/RELAY.md#delivery-card) with the goal, criteria, sources, reported checks and the three states shown separately (`--format html --out card.html` for a page).
+To see this state without reading JSON, use the local [views](docs/RELAY.md#views) or a read-only [delivery card](docs/RELAY.md#delivery-card).
 
 A project is a folder. Copy it, commit it, or zip it. Writes use a cooperative lock, and JSON files are replaced atomically. Packet creation and state updates are not a single database transaction, so after a crash, inspect the state before clearing a stale lock.
 
@@ -173,19 +129,7 @@ The original `okf-icm` command remains for the detailed six-stage workflow. Rela
 
 ## Optional Jev
 
-Relay can ask TypeSafe's [System One](https://docs.typesafe.ai/api/system-one) model for a second opinion on routing. This happens only when you pass `--jev`.
-
-```sh
-relay start assessment --goal "Investigate conflicting product claims" \
-  --accept "Resolve conflicts with evidence" --select sources.md --jev shadow
-```
-
-- `shadow` records the judgment without changing the route.
-- `route` may raise effort. It cannot lower a rule-selected profile, clear a blocker, or skip review.
-- The goal and selected non-control sources are sent to the provider, so select only content you are authorized to share. Control files are excluded.
-- The API key comes from `TYPESAFE_API_KEY` in the environment and is never stored. Requests time out after five seconds, are not retried, and reject redirects. On any failure Relay keeps the rules-only route and records why.
-
-The decision threshold is an initial heuristic, not a calibrated error bound. See [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md).
+Relay can ask TypeSafe's [System One](https://docs.typesafe.ai/api/system-one) model for a fast second opinion. It is off by default. Pass `--jev shadow` or `--jev route` on a task, or enable it once for a workspace with the `jev_mode` setting; then it is consulted only where the rules leave a question open, and every call or skip is recorded with its reason. It adds signals for a person and can raise effort. It never grants permission, accepts work, clears a blocker or skips review. Content it judges is sent to the provider. See [Jev](docs/JEV.md).
 
 ## Getting started
 
@@ -217,64 +161,13 @@ relay --root ./my-project serve
 
 `init` refuses to overwrite an existing `.context/`. For task-only use, `relay init ./my-project --minimal` writes a one-stage `config.json`, which makes every packet smaller (see [Minimal workspace](docs/RELAY.md#minimal-workspace)). Read and set `.context/policy.md` and `.context/project.md` before delegating real work: Relay does not discover who holds business authority. An existing compatible workspace can be used directly with `relay --root ./existing-project serve`.
 
-### Adapt an existing workspace with a skill
+### Assistant skills
 
-The repo and Python package include the `relay-workspace` assistant skill at
-[`src/okf_icm/skills/relay-workspace/SKILL.md`](src/okf_icm/skills/relay-workspace/SKILL.md).
-After installing the CLI, install the skill into your assistant's skills directory.
-For Codex, for example:
+Two optional skills connect an assistant to a workspace: `relay-workspace` adapts an existing folder, and `ref` (an implementation candidate) covers task handoffs and resuming work in another assistant. Installing one never modifies a workspace. See [Install the assistant skills](docs/ADOPTION.md#install-the-assistant-skills).
 
-```sh
-relay skill --to ~/.codex/skills
-```
+### First trial on your own project
 
-In your target workspace, ask your assistant: **Use $relay-workspace to adapt this
-workspace to Relay, saving its previous layout first.** Reload skills in your
-assistant if necessary. Installing the package or copying the repo alone never
-modifies another workspace. You can also run the adaptation directly:
-
-```sh
-relay --root ./my-project workspace                     # preview, no writes
-relay --root ./my-project workspace --apply --name "My project"
-```
-
-Before changes, it saves the previous layout and exact originals of files it will
-modify under `.relay-backups/workspace-*/`. It appends guidance to `AGENTS.md`,
-adds ignore rules, and initializes `.context` only if absent. It keeps source
-files in place and preserves existing controls, runs, tasks and stage graphs.
-An incompatible existing workspace is refused. Repeating a completed adaptation
-does not duplicate the guidance or backup. Backups cover modified files and the
-layout, not all project contents. See [workspace adaptation](docs/RELAY.md#workspace-adaptation)
-for rollback and privacy limits.
-
-### Portable REF skill (implementation candidate)
-
-The bundled `ref` skill covers preparation, task operations and resuming the same
-task in another assistant. Install the complete folder into an explicit destination:
-
-```sh
-relay skill --name ref --to .agents/skills       # Codex project skill: $ref
-relay skill --name ref --to .claude/skills       # Claude Code project skill: /ref
-relay skill --name ref --zip dist/ref.zip        # complete folder, for upload/copy
-relay skill --name ref --manual dist/ref-manual.md  # standalone guide + return template
-```
-
-Paths and invocation syntax follow the client documentation
-([Codex](https://learn.chatgpt.com/docs/build-skills),
-[Claude Code](https://code.claude.com/docs/en/skills)); observed cross-client
-compatibility remains a separate release gate. See the
-[validation record](docs/ref-validation.md). `/REF` uppercase is not a promised
-universal command. Installation never prepares a workspace or changes global
-configuration. Different existing skill contents are refused, including customized
-references. Inspect visible local/global copies if discovery is ambiguous.
-`relay skill --to DIRECTORY` still installs `relay-workspace` by default.
-
-For a requested Claude instruction bridge, preview
-`relay --root PROJECT workspace --claude`, then add `--apply` to back up and
-append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
-scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
-reorganization, MCP and publishing are later deliveries in the
-[implementation plan](docs/ref-command-plan.md).
+To try Relay on a real folder in about 20 minutes, and report what you found, follow [Try Relay on a project](docs/TRY.md).
 
 ### CLI walkthrough
 
@@ -296,7 +189,7 @@ This is a trusted-user prototype, not an authorization boundary. Do not expose i
 | HTTP forms, CSRF, and concurrent-edit handling                 | Resistance to prompt injection in general                   |
 |                                                                | Organizational authorization or managed compute enforcement |
 
-The [operational backcast](docs/relay-operational-backcast.md) lists the evidence still required before wider use. Its first gate, one observed collaboration, has not been run.
+The [operational backcast](docs/archive/relay-operational-backcast.md) lists the evidence still required before wider use. Its first gate, one observed collaboration, has not been run.
 
 ## Development
 
@@ -310,13 +203,7 @@ CI runs the suite and both smoke examples on Linux, macOS, and Windows. Fixtures
 
 ## Documentation
 
-- [REF v1, Relay Entry Format](docs/REF.md): the entry, controls, and packet shape.
-- [Task-layer protocol](docs/RELAY.md): the exact behavior of `relay`.
-- [Adopting Relay](docs/ADOPTION.md): setup practices and which interface suits which audience. Recommendations only, with no measured savings.
-- [Troubleshooting](docs/TROUBLESHOOTING.md): why a command was refused, which part of the task is out of date, and what to run next.
-- [CLI walkthrough](docs/WALKTHROUGH.md): one task from `start` to `review`, command by command.
-- [Original stage protocol](docs/PROTOCOL.md) and [CLI reference](docs/CLI.md): the six-stage `okf-icm` workflow.
-- [Product proposition](docs/relay-product-proposal.md), [adaptive effort and Jev](docs/relay-adaptive-effort-and-jev.md), [operational backcast](docs/relay-operational-backcast.md), and [first collaborator experiment](docs/relay-first-work-brief.md): strategy documents that retain their proposal history. Current behavior is described here and in [RELAY.md](docs/RELAY.md).
+Start at the [documentation index](docs/INDEX.md): one line per document, with when to read it. The two references are [REF v1](docs/REF.md) for the entry, controls, and packet, and the [task-layer protocol](docs/RELAY.md) for the exact behavior of `relay`. Earlier proposals are kept in [docs/archive](docs/archive/).
 
 ## License
 

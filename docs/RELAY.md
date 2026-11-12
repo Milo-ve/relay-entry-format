@@ -24,6 +24,9 @@ The task layer provides a compact lifecycle instead of silently creating and com
 | `skill [--name ref] --zip FILE` | Export the complete skill folder as a new ZIP; never overwrite. |
 | `skill --name ref --manual FILE` | Export a standalone manual guide and separate-result/evidence return template. |
 | `workspace [--apply] [--claude] [--minimal]` | Preview additive onboarding; save originals and layout before applying; optionally add the Claude bridge. `--minimal` applies only when this creates the workspace; an existing one is refused, never rewritten. |
+| `navigate GOAL [--stage ID] [--max-chars N] [--limit N]` | Experimental read-only knowledge-source suggestions; review before explicit selection. See [Navigation](#navigation-experimental). |
+| `tidy [--path DIR] [--brief] [--out FILE]` | Read-only clutter report: duplicates, unlinked files, broken links, oversized entry files. See [Tidy](#tidy). |
+| `tidy --apply [--dry-run]`, `tidy --undo RUN` | Do the safe cleanups without per-file approval, backed up; restore a whole run. See [Tidy](#tidy). |
 | `start ID`               | Validate a task, choose an initial route, snapshot controls/selected sources.                                 |
 | `list`, `show ID`        | Compute current freshness and review state, with a plain-language `next_step`. `list --brief` prints only id, status, freshness, owner, reviewer and revision for each task; use `show ID` for detail. `list --stale` keeps only tasks whose inputs changed since their snapshot and combines with `--brief`; it adds a one-line hint on stderr, so the JSON on stdout is unchanged. |
 | `context ID`             | Export a current readable work packet. Refuse changed inputs or blockers, naming which.                       |
@@ -120,15 +123,157 @@ Full-file SHA-256 hashes identify byte versions even for section selections. Sel
 
 Packets are frozen JSON with a hash over sorted-key JSON excluding `packet_id`. Each packet includes a brief, route, files, task ID, and revision. The Markdown export frames source contents as JSON strings. Hashes detect changes/corruption, not authenticated identity or malicious rewriting of all records together.
 
+The brief carries the goal, acceptance criteria, owner, reviewer, boundaries, kind, risk and blockers. The route carries the selected profile, the decision basis and any escalation.
+
+
+## Navigation (experimental)
+
+```sh
+relay --root PROJECT navigate "Explain annual refunds" --stage 04-produce
+relay --root PROJECT navigate "Explain annual refunds" --max-chars 6000 --limit 5
+```
+
+This command suggests knowledge concepts only, without a model call. It creates no task,
+packet, checkpoint or file and takes no writer lock. Review the returned `select` values,
+then pass the ones you actually need to `start --select`. Explicit selection still validates
+each source and the full packet. **This implementation passes the original synthetic gate
+but fails the independent held-out gap gate**: unrelated concepts can appear for an
+uncovered goal. Do not treat a suggestion as proof of coverage. See [results](navigate-results.md).
+
+Defaults accepted on 2026-11-11 are **12,000 source packet characters**, **2,000 raw characters
+per source** (whole file or section), no budgets by type, and `--stage` included. `--limit`
+defaults to 8 and bounds both returned candidates and displayed omissions (1–100). `--max-chars`
+accepts 1–1,000,000. These limits apply to suggestions only; the existing `start` default stays
+32,000 characters for the **whole** packet. Nothing is truncated to fit. Oversized candidates
+are named in `left_out` with a reason. Above 26,000 a note warns about the full packet budget.
+
+`budget.used` counts the exact additional characters of the suggested file records in a
+task packet's indented JSON, including JSON escaping, metadata signals, hashes and separators.
+Controls are not charged here; `controls_raw_chars` reports their raw text separately,
+without claiming to estimate the brief, route or total packet overhead. See the
+[measurements and accepted budgets](archive/navigate-budgets.md).
+
+The walk filters spelled and resolved paths before content reads, prunes denied directories,
+and never follows directory symlinks. Denied, sensitive, escaping, invalid and unreadable
+concepts are omitted from output and counts. It uses valid concepts directly rather than
+trusting a possibly stale generated index. A note counts only permitted concepts absent
+from their local index.
+
+Ranking uses accent-folded Unicode goal tokens, fixed English/Spanish function-word lists,
+field weights (tags 12, title 10, headings 6, description 5, body 1), and a bounded inverse
+frequency weight. Strong seeds reach 35% of the best seed score, with a floor of 10.
+One-hop links add candidates; heavily linked hubs (more than 25% of the permitted bundle,
+with a floor of 3 incoming links) require goal support in the anchor or fragment. There is
+no recursive walk, synonym model or translation. A language mismatch can leave a gap.
+
+`--stage` reads only backticked concept paths in that stage contract's exact `Inputs` section.
+It accepts exact headings or unambiguous heading slugs, emits exact titles, and places
+contract-named concepts first. It does not open a run or satisfy stage dependencies. Entry
+and project backticked paths provide only a small boost to goal-supported seeds. Contract
+prose and source instructions are never executed. Non-knowledge artifacts are not navigated.
+
+Recorded lifecycle, freshness and trust appear on candidates; hazardous candidates also
+carry explicit warnings. A hazard whose matched terms stable candidates already cover is
+left out, except for an explicitly contract-named input, which remains flagged. Stable here
+means stable lifecycle, not stale, and carrying a recorded verification signal; this does
+not independently verify the source. Freshness is clock-dependent.
+
+Sections use exact ATX headings and the existing fence rules. Concentrated heading matches
+or explicit fragments narrow a selection; distributed matches usually keep the whole file.
+Duplicate heading titles fall back to the whole file with a warning and still obey the cap.
+`candidates` include `select`, raw and packet characters, score, `why`, signals and warnings.
+`left_out` carries the same data plus a reason; `left_out_remaining` counts other permitted
+omissions. `gaps` reports unmatched goal terms, no seed reaching the bar, no fitting candidate,
+and relevant permitted unresolved links. A gap is lexical advice, not a completeness check.
+Generated sentences carry stable English `code`, `params`, and localized `text` (English or
+Spanish); JSON keys and recorded signal values remain English. Output has sorted keys and
+no timestamp. Identical files on the same side of every freshness deadline yield identical
+output. Existing controls, packet formats and saved state are unchanged.
+
+By default navigation calls no model. If the workspace enabled the `rerank` use (see [Jev](JEV.md)), the candidates already chosen are also judged for relevance: each gains `jev_relevance`, `auto` reorders them, and a `jev_no_support` gap is added when none looks relevant. No candidate is added or removed, the budget is unchanged, and the output is then no longer deterministic. The evaluation in [navigate-results.md](navigate-results.md) was run without it.
+
+The CLI also prints a localized experimental warning on stderr, leaving stdout as
+JSON for tools. The bundled `ref` skill uses navigation as an inspection step
+before explicit selection; it requires reading candidates for factual support
+and never treats suggestions as a completed packet or an answered question.
+
+## Tidy
+
+`relay --root PROJECT tidy` reports clutter and suggests what to do about it. On its own it reads only: it changes, moves and deletes nothing and takes no lock. It calls no model unless the workspace enabled the `dedupe` use (see [Jev](JEV.md)), which asks about sections that overlap between 50% and 80%.
+
+`relay --root PROJECT tidy --apply` then does the part that needs no judgment, in one run and without asking about each file. `--dry-run` shows what it would do. It never contacts a model.
+
+| Cleanup                          | What it does                                                                                           | Never when                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Identical files (`duplicate-file`) | Removes the redundant copy and points every link at the file kept                                      | The file is named by path in project controls or task state, is an entry file or an index, or the kept file changed since read |
+| Unlinked files (`orphan`)        | Moves the file to an `archive/` folder beside it and re-spells its own relative links                  | It changed in the last `tidy_orphan_days` days (default 30), has uncommitted Git changes, is a knowledge concept, or the archive name is taken |
+| Broken links (`broken-link`)     | Repairs the link when exactly one scanned file has that name                                           | Zero or several files match                                                                                                 |
+
+Everything else (`duplicate-section`, `oversize-entry`, `invalid-concept`, `review-signal`) needs a reader and stays in the report. Section overlap is lexical, so two sections can share words and still disagree.
+
+What makes this safe to run unattended:
+
+- **Backup first.** Every original it will touch is copied to `.relay-backups/tidy-<time>-<id>/files` and a manifest is written before the first change. `.relay-backups` is already git-ignored by `workspace`.
+- **All or nothing.** Nothing changes unless every file is still exactly what was read. If anything fails, or the run would leave more broken links than it found, it undoes itself.
+- **`relay tidy --undo RUN`** (or `latest`) restores the whole run. A file edited since the run is left as it is and listed as a conflict, never overwritten. A run can be undone once; the backup stays.
+- **Scoped by settings.** `tidy_actions` (default all three) and `tidy_orphan_days` (default 30; 0 never archives unlinked files) in `.context/relay/settings.json`. `deny_paths` and the secret-path rules apply as for the report.
+- It runs under the workspace write lock when `.context` exists.
+
+Limits: it moves and rewrites Markdown only. It finds references by link or by a full relative path in `.context`; a file mentioned some other way, such as a bare name in prose, can be archived and leave that mention stale. The archive is a folder, not a deletion; nothing is ever deleted outside the backup. The run applies the rules above; it does not judge whether a document is still valuable, which is why it waits out `tidy_orphan_days` and skips uncommitted work.
+
+Without `--path` it scans `.context/knowledge`. `--path DIR` (repeatable, relative to `--root`) scans any folder or Markdown file, and needs no workspace, so a plain folder of notes can be checked. Only `.md` files are read.
+
+| Finding             | Reported when                                                                                             | Suggestion                                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `duplicate-file`    | Two or more files have the same content after trimming line ends                                          | Keep the one others link to; delete the rest |
+| `duplicate-section` | Two sections of at least 12 distinct words share 80% of them                                              | Keep one; replace the other with a link      |
+| `broken-link`       | A relative link outside code fences points at nothing                                                     | Fix or remove the link                       |
+| `orphan`            | No scanned file, and no root `README.md`, `AGENTS.md` or `CLAUDE.md`, links to the file or to its folder  | Add to an index, or archive or delete        |
+| `oversize-entry`    | The four controls together, or a root `AGENTS.md` or `CLAUDE.md`, exceed 2,500 characters                 | Move detail to a document read when needed   |
+| `invalid-concept`   | A file in the knowledge bundle has invalid metadata                                                       | Fix it or move it out of the bundle          |
+| `review-signal`     | A concept's own metadata says not stable, stale or unverified                                             | Verify and update, or retire                 |
+
+`index.md`, `README.md` and `log.md` are never orphans. Section comparison counts distinct words after the same folding and stop-word list as navigation; it is lexical, so two sections that say the same thing in different words are not found, and two that share vocabulary but disagree are. Read both before merging. Beyond 2,000 sections the comparison stops and the report says so.
+
+`deny_paths` and the common secret-path rules apply: excluded files are not read, not counted and not named, including as link targets. Naming an excluded folder in `--path` is refused. Suggestions follow the `language` setting; kinds and JSON keys stay in English.
+
+`--brief` keeps kind, paths and suggestion. `--out FILE` writes one Markdown note with a checkbox per suggestion, to a new file outside `.context`; it never overwrites. Neither combines with `--apply` or `--undo`.
+
 ## Routing
 
 Policy `relay-effort-v1` uses explicit task kind, consequence level, missing-prerequisite flags, and conservative request-text heuristics. Direct requires an explicitly specified transformation with low consequences. Diagnosis/design and high consequences select Investigative. Otherwise Standard is the default. An explicit blocker selects Clarify.
 
+| Profile           | Selected when                                              | Expected work                              |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------ |
+| **Direct**        | An explicit transformation with low consequences           | Do the work and a relevant check.          |
+| **Standard**      | The default                                                | Plan, work, check, hand off where needed.  |
+| **Investigative** | Diagnosis, design, a conflict signal, or high consequences | Investigate and validate more strongly.    |
+| **Clarify**       | An explicit missing prerequisite                           | Resolve what is missing before continuing. |
+
+```sh
+relay start heading --goal "Fix the heading spelling" --accept "Spelling corrected" \
+  --kind transform --risk low --select draft.md
+relay escalate heading --note "The change revealed conflicting terminology"
+```
+
+Each task allows one escalation, to Investigative. Further effort means reassessing the scope.
+
 No automatic classifier discovers every risk, policy conflict, or missing prerequisite. Review the selected route and escalate on evidence. The task's boundaries and host instructions remain applicable regardless of effort.
 
-`--jev shadow` and `--jev route` explicitly authorize a request containing the goal and selected non-control source contents to TypeSafe's documented endpoint. Control files are excluded from the provider request. The adapter asks a Choice about work type and a Noul about conflicting relevant claims. Route mode can raise effort; it cannot lower a rule-selected profile or waive prerequisites/review. The threshold is an initial heuristic, not a measured error bound.
+`--jev shadow` and `--jev route` explicitly authorize a request containing the goal and selected non-control source contents to TypeSafe's documented endpoint. Control files are excluded from the provider request. The adapter asks a Choice about work type and a Noul about conflicting relevant claims. Route mode can raise effort; with the flag it cannot lower a rule-selected profile, and it never waives prerequisites or review. The threshold is an initial heuristic, not a measured error bound.
+
+A workspace can also enable Jev once, with the `jev_mode` [setting](#settings), so it runs where it is useful without a flag on each command. `shadow` records judgments and changes nothing; `auto` lets them act. Rules still come first: Jev is consulted at `start` only when they end on the conservative default. A blocker, high consequences, a stated `--kind` or a keyword match already decide the route, so no request is made. Every call and every skip is recorded under `route.jev` with `trigger: setting` and a reason: `use-not-enabled`, `rules-decisive`, `nothing-shareable`, `no-key`, `budget-exhausted`. `--jev` on the command overrides the setting in both directions, including `--jev off`.
+
+In `auto` only, a task started with `--risk low` and no stated kind may be lowered from Standard to Direct when Jev classifies it as a bounded transformation with probability 0.8 or more, conflict 0.3 or less, and no source-instruction flag. The reason code is `jev-bounded-transformation`. Review stays required. This is the one case where Jev reduces effort, and the operator's own low-risk declaration is its precondition. See [Jev](JEV.md) for every use and its limits.
 
 The adapter uses a five-second timeout, no automatic retries, rejects redirects, bounds response size, validates returned choices/probabilities, and does not persist the API key. Failure retains rules with a visible reason. A refresh does not reuse or automatically rerun the old provider judgment.
+
+`shadow` records the judgment without changing the route. The API key is read from `TYPESAFE_API_KEY` in the environment.
+
+```sh
+relay start assessment --goal "Investigate conflicting product claims" \
+  --accept "Resolve conflicts with evidence" --select sources.md --jev shadow
+```
 
 ## Result and acceptance
 
@@ -139,6 +284,14 @@ Submission requires nonempty output and evidence files, a description of actual 
 By default a submission signs the files where they are, so editing a result or its evidence afterwards returns the task to `needs_review`. `submit --snapshot` is for work that keeps changing in place: after all the checks above pass, each output and evidence file is copied byte for byte to `deliverables/ID/rREV/ORIGINAL-PATH` (REV is the task revision at submission, and the original folder structure is kept, so equal file names in different folders do not collide) and the copies are what is signed. Each record keeps `source_path`, and the submission carries `snapshot: true`. Later edits to the originals leave the submitted version, and any acceptance of it, untouched; editing a copy returns the task to `needs_review`. Copies are opened exclusively: an existing target is refused and never overwritten, and copies and folders created by a submission that then fails are removed. `deliverables/` is in the `.gitignore` lines that `workspace --apply` adds. The copy proves which bytes were submitted, not that they are correct; reviewing the original after it changed again is still a separate decision. Without `--snapshot` nothing is copied and behaviour is as before.
 
 Workflow/result progress, freshness, and acceptance are separate fields. Changed sources, outputs, or evidence produce `needs_review`; submission alone does not become acceptance. Refresh and escalation remove current acceptance. Review events retain the recorded decision and its version references.
+
+Freshness covers the selected inputs, the controls, and the submitted output and evidence. A refresh records that inputs changed. It does not mean the new facts were validated.
+
+```sh
+relay show faq                      # freshness is recomputed
+relay refresh faq --note "The designated policy changed; reassess affected answers"
+relay context faq --out faq-context-v2.md
+```
 
 The optional library-level `review_required=False` skips the pending-human-review label but never creates acceptance. The public CLI and UI require an explicit reviewer decision.
 
@@ -178,6 +331,11 @@ Optional tool settings live in `.context/relay/settings.json`. Relay never creat
 | `require_expected_revision` | `false` | When `true`, `refresh`, `escalate`, `reassign`, `submit` and `review` are refused without `--expected-revision`. |
 | `deny_paths` | `[]` | Names that may never be selected as a source, in task and stage packets. See below. |
 | `language` | `"en"` | `"en"` or `"es"`: the language of the people-facing views. See [Language](#language). |
+| `jev_mode` | `"off"` | `"off"`, `"shadow"` (record judgments, change nothing) or `"auto"` (let them act within the limits in [Jev](JEV.md)). Enabling it sends content to TypeSafe without a flag on each command. |
+| `jev_uses` | `["route"]` | Which uses are enabled: `route`, `source-scan`, `evaluate`, `rerank`, `dedupe`. |
+| `jev_max_calls` | `5` | Provider requests one command may make, 0 to 50. |
+| `tidy_actions` | all three | Which cleanups `tidy --apply` may do: `duplicate-file`, `broken-link`, `orphan`. |
+| `tidy_orphan_days` | `30` | Days an unlinked file must sit untouched before `tidy --apply` archives it, 0 to 3650; 0 never. |
 
 `deny_paths` patterns are matched case-insensitively against the spelled path and against the path it resolves to through links, and against every parent directory. A pattern without a slash matches any one path component (`secrets`, `*.pem`). A pattern with a slash matches the whole path or any parent directory of it (`finance/payroll*`); `*` also crosses slashes. The check runs before a file is read, so a refused `start` creates no task folder, and a `refresh` whose source became denied is refused with nothing changed. A packet taken before the rule is also refused at `context` export. Project controls are not subject to it. This applies only the names you list; it is not a secret scanner, and a denied file can still be pasted into an assistant by hand.
 

@@ -1,0 +1,11 @@
+# Knowledge index
+- [API overview](api-overview.md) — Authentication, rate limits and versioning
+- [Data export limits (v1)](data-export-limits-v1.md) — Old export limits note
+- [Data export](data-export.md) — Export formats, scheduling and limits
+- [Integrations](integrations.md) — Chat, webhook and identity integrations
+- [Plan tiers](plan-tiers.md) — Starter, Team and Enterprise compared
+- [Pricing (2024)](pricing-2024.md) — Superseded 2024 list prices
+- [Current pricing](pricing-current.md) — Current list prices in USD
+- [Roadmap (draft)](roadmap-draft.md) — Speculative future features
+- [SSO setup](sso-setup.md) — Enterprise SSO via SAML and SCIM
+- [Usage limits](usage-limits.md) — API, storage and seat limits per plan

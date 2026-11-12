@@ -1,0 +1,12 @@
+# Knowledge index
+- [Acceptable use policy](acceptable-use.md) — What customers may not do with the service
+- [Data retention FAQ (draft)](data-retention-faq.md) — Draft answers about keeping and deleting data
+- [Data retention policy](data-retention.md) — How long customer data is kept and when it is deleted
+- [Discount policy](discounts.md) — Annual, nonprofit and negotiated discounts and who approves them
+- [Escalation rules](escalation-rules.md) — When and how support escalates a case
+- [Privacy notice](privacy-notice.md) — Public privacy notice
+- [Refund policy (2023)](refund-policy-2023.md) — Superseded refund rules
+- [Refund policy](refund-policy.md) — When a subscription can be refunded and how much
+- [Refund quick summary](refund-summary.md) — One-paragraph refund summary for support
+- [Security incident policy](security-incident-policy.md) — Severity, notification deadlines and roles for security incidents
+- [Support SLA](support-sla.md) — Response targets by plan and severity
