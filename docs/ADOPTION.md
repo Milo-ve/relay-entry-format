@@ -42,6 +42,67 @@ Do not put Relay in front of people who do not need it. A client or a non-techni
 - **`review --external-ref` is a pointer, not a transfer.** It stores text that says where an approval was given. Whether an approval made elsewhere may be copied into Relay as a review is a project decision; the software records the reference and does not check it.
 - **A card contains free text.** The goal, criteria, reported checks, open questions and review note appear on it. Read it before sending it outside the project.
 
+## Install the assistant skills
+
+### Adapt an existing workspace with a skill
+
+The repo and Python package include the `relay-workspace` assistant skill at
+[`src/okf_icm/skills/relay-workspace/SKILL.md`](../src/okf_icm/skills/relay-workspace/SKILL.md).
+After installing the CLI, install the skill into your assistant's skills directory.
+For Codex, for example:
+
+```sh
+relay skill --to ~/.codex/skills
+```
+
+In your target workspace, ask your assistant: **Use $relay-workspace to adapt this
+workspace to Relay, saving its previous layout first.** Reload skills in your
+assistant if necessary. Installing the package or copying the repo alone never
+modifies another workspace. You can also run the adaptation directly:
+
+```sh
+relay --root ./my-project workspace                     # preview, no writes
+relay --root ./my-project workspace --apply --name "My project"
+```
+
+Before changes, it saves the previous layout and exact originals of files it will
+modify under `.relay-backups/workspace-*/`. It appends guidance to `AGENTS.md`,
+adds ignore rules, and initializes `.context` only if absent. It keeps source
+files in place and preserves existing controls, runs, tasks and stage graphs.
+An incompatible existing workspace is refused. Repeating a completed adaptation
+does not duplicate the guidance or backup. Backups cover modified files and the
+layout, not all project contents. See [workspace adaptation](RELAY.md#workspace-adaptation)
+for rollback and privacy limits.
+
+### Portable REF skill (implementation candidate)
+
+The bundled `ref` skill covers preparation, task operations and resuming the same
+task in another assistant. Install the complete folder into an explicit destination:
+
+```sh
+relay skill --name ref --to .agents/skills       # Codex project skill: $ref
+relay skill --name ref --to .claude/skills       # Claude Code project skill: /ref
+relay skill --name ref --zip dist/ref.zip        # complete folder, for upload/copy
+relay skill --name ref --manual dist/ref-manual.md  # standalone guide + return template
+```
+
+Paths and invocation syntax follow the client documentation
+([Codex](https://learn.chatgpt.com/docs/build-skills),
+[Claude Code](https://code.claude.com/docs/en/skills)); observed cross-client
+compatibility remains a separate release gate. See the
+[validation record](ref-validation.md). `/REF` uppercase is not a promised
+universal command. Installation never prepares a workspace or changes global
+configuration. Different existing skill contents are refused, including customized
+references. Inspect visible local/global copies if discovery is ambiguous.
+`relay skill --to DIRECTORY` still installs `relay-workspace` by default.
+
+For a requested Claude instruction bridge, preview
+`relay --root PROJECT workspace --claude`, then add `--apply` to back up and
+append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
+scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
+reorganization, MCP and publishing are later deliveries in the
+[implementation plan](archive/ref-command-plan.md).
+
 ## What this guide does not establish
 
 No collaboration, cross-assistant handoff or time saving with real users has been observed; the [operational backcast](archive/relay-operational-backcast.md) lists the evidence still required. The practices above are a starting point to test, not a result.

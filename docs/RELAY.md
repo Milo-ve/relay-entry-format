@@ -121,6 +121,8 @@ Full-file SHA-256 hashes identify byte versions even for section selections. Sel
 
 Packets are frozen JSON with a hash over sorted-key JSON excluding `packet_id`. Each packet includes a brief, route, files, task ID, and revision. The Markdown export frames source contents as JSON strings. Hashes detect changes/corruption, not authenticated identity or malicious rewriting of all records together.
 
+The brief carries the goal, acceptance criteria, owner, reviewer, boundaries, kind, risk and blockers. The route carries the selected profile, the decision basis and any escalation.
+
 
 ## Navigation (experimental)
 
@@ -195,11 +197,33 @@ and never treats suggestions as a completed packet or an answered question.
 
 Policy `relay-effort-v1` uses explicit task kind, consequence level, missing-prerequisite flags, and conservative request-text heuristics. Direct requires an explicitly specified transformation with low consequences. Diagnosis/design and high consequences select Investigative. Otherwise Standard is the default. An explicit blocker selects Clarify.
 
+| Profile           | Selected when                                              | Expected work                              |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------ |
+| **Direct**        | An explicit transformation with low consequences           | Do the work and a relevant check.          |
+| **Standard**      | The default                                                | Plan, work, check, hand off where needed.  |
+| **Investigative** | Diagnosis, design, a conflict signal, or high consequences | Investigate and validate more strongly.    |
+| **Clarify**       | An explicit missing prerequisite                           | Resolve what is missing before continuing. |
+
+```sh
+relay start heading --goal "Fix the heading spelling" --accept "Spelling corrected" \
+  --kind transform --risk low --select draft.md
+relay escalate heading --note "The change revealed conflicting terminology"
+```
+
+Each task allows one escalation, to Investigative. Further effort means reassessing the scope.
+
 No automatic classifier discovers every risk, policy conflict, or missing prerequisite. Review the selected route and escalate on evidence. The task's boundaries and host instructions remain applicable regardless of effort.
 
 `--jev shadow` and `--jev route` explicitly authorize a request containing the goal and selected non-control source contents to TypeSafe's documented endpoint. Control files are excluded from the provider request. The adapter asks a Choice about work type and a Noul about conflicting relevant claims. Route mode can raise effort; it cannot lower a rule-selected profile or waive prerequisites/review. The threshold is an initial heuristic, not a measured error bound.
 
 The adapter uses a five-second timeout, no automatic retries, rejects redirects, bounds response size, validates returned choices/probabilities, and does not persist the API key. Failure retains rules with a visible reason. A refresh does not reuse or automatically rerun the old provider judgment.
+
+`shadow` records the judgment without changing the route. The API key is read from `TYPESAFE_API_KEY` in the environment.
+
+```sh
+relay start assessment --goal "Investigate conflicting product claims" \
+  --accept "Resolve conflicts with evidence" --select sources.md --jev shadow
+```
 
 ## Result and acceptance
 
@@ -210,6 +234,14 @@ Submission requires nonempty output and evidence files, a description of actual 
 By default a submission signs the files where they are, so editing a result or its evidence afterwards returns the task to `needs_review`. `submit --snapshot` is for work that keeps changing in place: after all the checks above pass, each output and evidence file is copied byte for byte to `deliverables/ID/rREV/ORIGINAL-PATH` (REV is the task revision at submission, and the original folder structure is kept, so equal file names in different folders do not collide) and the copies are what is signed. Each record keeps `source_path`, and the submission carries `snapshot: true`. Later edits to the originals leave the submitted version, and any acceptance of it, untouched; editing a copy returns the task to `needs_review`. Copies are opened exclusively: an existing target is refused and never overwritten, and copies and folders created by a submission that then fails are removed. `deliverables/` is in the `.gitignore` lines that `workspace --apply` adds. The copy proves which bytes were submitted, not that they are correct; reviewing the original after it changed again is still a separate decision. Without `--snapshot` nothing is copied and behaviour is as before.
 
 Workflow/result progress, freshness, and acceptance are separate fields. Changed sources, outputs, or evidence produce `needs_review`; submission alone does not become acceptance. Refresh and escalation remove current acceptance. Review events retain the recorded decision and its version references.
+
+Freshness covers the selected inputs, the controls, and the submitted output and evidence. A refresh records that inputs changed. It does not mean the new facts were validated.
+
+```sh
+relay show faq                      # freshness is recomputed
+relay refresh faq --note "The designated policy changed; reassess affected answers"
+relay context faq --out faq-context-v2.md
+```
 
 The optional library-level `review_required=False` skips the pending-human-review label but never creates acceptance. The public CLI and UI require an explicit reviewer decision.
 
