@@ -9,6 +9,11 @@ cross-client compatibility.
 
 ## Scope
 
+For knowledge organization and navigation, use the primary
+[OKF + ICM environment interface](ENVIRONMENT.md). The task lifecycle below is
+retained for compatibility and explicit handoff/review work; it is not required
+to prepare, browse, search, read or export a knowledge environment.
+
 `relay` supports a preferred-assistant handoff flow. It does not invoke a worker model, execute shell commands, enforce model compute, authenticate organizations, or manage distributed collaboration. `relay serve` is loopback-only and intended for a trusted local user.
 
 The task layer provides a compact lifecycle instead of silently creating and completing six legacy stages. Its profiles recommend work appropriate to the task. They do not confer permissions or approve business decisions.

@@ -4,6 +4,25 @@
 is relative to the shell working directory, may be outside the project and never
 overwrites an existing file.
 
+## Primary knowledge interface
+
+```sh
+okf-icm --root ./project prepare --path docs
+okf-icm --root ./project prepare --path docs --apply
+okf-icm --root ./project browse
+okf-icm --root ./project find "project decisions"
+okf-icm --root ./project read 'docs/decisions.md#Current'
+okf-icm --root ./project context --select 'docs/decisions.md#Current' --out selected-context.md
+```
+
+Select existing paths and headings. These commands do not need a run or task.
+`browse`, `find` and `read` accept `--format json`; context retains its existing
+`markdown`/`json` options. Knowledge curation works in both task-free and older
+workspaces. See [Knowledge environments](ENVIRONMENT.md) for generation,
+preservation, conflicts, exclusions and retrieval limitations.
+
+## Legacy stage interface
+
 ```bash
 okf-icm init ./project --name "Example"
 okf-icm --root ./project run start test-a --goal "Write a specification" --accept "Has testable criteria"
