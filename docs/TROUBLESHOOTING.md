@@ -73,6 +73,14 @@ A source in the frozen packet now matches `deny_paths`, so the packet is not exp
 
 **A `TODO` in the request, or `Request parts still to fill:` on stderr.** The standing file has no text under that exact heading, or `--task` was omitted. Fill it in the file or the pasted text.
 
+### Why does `okf-icm prepare --layout icm` report a conflict?
+
+**`NAME exists and is not a folder`** (under `conflicts`). A file sits where `sources`, `examples`, `working` or `outputs` belongs. Nothing was replaced; move it, then run again.
+
+**`Environment paths cannot be symbolic links`** One of those names, or `CLAUDE.md` or `CONTEXT.md`, is a link. Replace it with a real folder or file.
+
+**`Select at least one source folder with --path, or use --layout icm.`** `prepare` was given neither.
+
 ### Why can't I submit?
 
 **`Inputs changed or prerequisites unresolved. Refresh or resolve before submitting.`**

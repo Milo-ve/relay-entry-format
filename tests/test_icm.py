@@ -197,5 +197,111 @@ class CliTests(ExportBase):
                 self.assertEqual(self.run_cli("context", "--select", "docs/offer.md", *extra)[0], 2)
 
 
+class ScaffoldTests(IcmBase):
+    def test_preview_creates_nothing_and_names_what_it_would_create(self):
+        before = self.snapshot()
+        report = icm.scaffold(self.env)
+        self.assertFalse(report["applied"])
+        self.assertEqual(report["create"], ["CLAUDE.md", "CONTEXT.md", "sources/.gitkeep", "examples/.gitkeep",
+                                            "working/.gitkeep", "outputs/.gitkeep"])
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse((self.root / ".context").exists())
+
+    def test_apply_creates_missing_items_and_is_then_a_no_op(self):
+        report = icm.scaffold(self.env, apply=True)
+        self.assertTrue(report["applied"])
+        self.assertTrue((self.root / "CLAUDE.md").read_text().startswith("# CLAUDE.md"))
+        for name in icm.FOLDERS:
+            self.assertTrue((self.root / name).is_dir())
+        again = icm.scaffold(self.env, apply=True)
+        self.assertEqual((again["applied"], again["create"]), (False, []))
+        self.assertIn("CLAUDE.md", again["present"])
+
+    def test_existing_files_and_folders_are_kept_byte_for_byte(self):
+        self.write("CLAUDE.md", "mine\n")
+        self.write("CONTEXT.md", "also mine\n")
+        keep = self.write("sources/a.md", "# A\n")
+        icm.scaffold(self.env, apply=True)
+        self.assertEqual((self.root / "CLAUDE.md").read_text(), "mine\n")
+        self.assertEqual((self.root / "CONTEXT.md").read_text(), "also mine\n")
+        self.assertEqual(keep.read_text(), "# A\n")
+        self.assertFalse((self.root / "sources/.gitkeep").exists())
+
+    def test_agents_file_is_not_shadowed_by_a_template(self):
+        self.write("AGENTS.md", "# Agents\n")
+        report = icm.scaffold(self.env, apply=True)
+        self.assertFalse((self.root / "CLAUDE.md").exists())
+        self.assertTrue(any("AGENTS.md is the standing file" in n for n in report["notes"]))
+
+    def test_a_file_where_a_folder_belongs_is_reported_not_replaced(self):
+        self.write("outputs", "a file\n")
+        report = icm.scaffold(self.env, apply=True)
+        self.assertEqual(report["conflicts"], ["outputs exists and is not a folder"])
+        self.assertEqual((self.root / "outputs").read_text(), "a file\n")
+
+    def test_symbolic_links_are_refused(self):
+        target = self.root / "elsewhere"
+        target.mkdir()
+        (self.root / "sources").symlink_to(target)
+        with self.assertRaises(ContextError):
+            icm.scaffold(self.env, apply=True)
+
+    def test_a_failed_write_restores_the_project(self):
+        before = self.snapshot()
+        from unittest.mock import patch
+        real = icm.atomic_write
+        calls = []
+        def flaky(path, text, **kw):
+            calls.append(path)
+            if len(calls) == 4:
+                raise OSError("disk full")
+            return real(path, text, **kw)
+        with patch.object(icm, "atomic_write", flaky), self.assertRaises(OSError):
+            icm.scaffold(self.env, apply=True)
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse((self.root / "sources").exists())
+
+    def test_scaffolded_standing_file_is_exportable_with_todo_parts_only_for_placeholders(self):
+        self.write("docs/a.md")
+        self.env.prepare(["docs"], apply=True)
+        icm.scaffold(self.env, apply=True)
+        _, text, unfilled = icm.export(self.env, ["docs/a.md"], with_prompt=True, task="t")
+        self.assertEqual(unfilled, [])
+        self.assertIn("You are a <role>", text)
+
+
+class LayoutCliTests(ExportBase):
+    def test_prepare_requires_a_path_or_a_layout(self):
+        self.assertEqual(self.run_cli("prepare")[0], 2)
+
+    def test_layout_only_preview_then_apply(self):
+        code, out, _ = self.run_cli("prepare", "--layout", "icm")
+        self.assertEqual(code, 0)
+        self.assertFalse(json.loads(out)["layout"]["applied"])
+        self.assertFalse((self.root / "CONTEXT.md").exists())
+        code, out, _ = self.run_cli("prepare", "--layout", "icm", "--apply")
+        self.assertTrue(json.loads(out)["layout"]["applied"])
+        self.assertTrue((self.root / "CONTEXT.md").is_file())
+
+    def test_prepare_with_path_and_layout_reports_both(self):
+        code, out, _ = self.run_cli("prepare", "--path", "docs", "--layout", "icm")
+        data = json.loads(out)
+        self.assertEqual(code, 0)
+        self.assertIn("sources", data)
+        self.assertIn("create", data["layout"])
+
+    def test_browse_is_unchanged_without_icm_items_and_shows_layout_with_them(self):
+        import shutil
+        shutil.rmtree(self.root / "examples")
+        code, out, _ = self.run_cli("browse", "--format", "json")
+        self.assertNotIn("layout", json.loads(out))
+        self.assertNotIn("# Layout", self.run_cli("browse")[1])
+        self.write("CLAUDE.md", "# R\n\n## Identity\nYou are X.\n")
+        data = json.loads(self.run_cli("browse", "--format", "json")[1])
+        self.assertEqual(data["layout"]["standing_file"], "CLAUDE.md")
+        self.assertEqual(data["layout"]["request_parts_missing_in_standing_file"], ["Constraints", "Format"])
+        self.assertIn("Request parts with no text: Constraints, Format", self.run_cli("browse")[1])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -36,6 +36,23 @@ Sources remain in place. Directory maps link down to child maps and back to thei
 
 Existing entry, project, policy, index, log, configuration and run files are preserved byte for byte. In an older project, open `.context/navigation/ENTRY.md` to use this path. Preparation does not rewrite an existing entry that still describes stages or tasks. Deliberately integrate the navigation entry into your host instructions if desired; the tool does not modify `AGENTS.md` or `CLAUDE.md` automatically.
 
+### ICM folder layout
+
+```sh
+okf-icm --root /path/to/project prepare --layout icm
+okf-icm --root /path/to/project prepare --layout icm --apply
+```
+
+Optional. The preview lists what would be created; `--apply` creates only what is missing and changes nothing that exists. `--path` may be added to prepare sources in the same call, and `--path` is no longer required when `--layout` is given.
+
+```text
+CLAUDE.md    standing instructions (starter text)    yours to edit afterwards
+CONTEXT.md   domain, decisions and a Map section     yours to edit afterwards
+sources/  examples/  working/  outputs/              empty folders (a .gitkeep file each)
+```
+
+If the project has an `AGENTS.md` and no `CLAUDE.md`, no `CLAUDE.md` is created, so a starter text cannot shadow your instructions. A file where a folder belongs is reported and left alone, symbolic links are refused, and a failed write restores the project. Nothing is moved or renamed. `browse` lists which of these exist and which request parts (Identity, Constraints, Format) the standing file lacks; it adds nothing to its output in projects with none of them. The printed next step is `okf-icm prepare --path sources --path examples --path CONTEXT.md --apply`; `CLAUDE.md` is deliberately not indexed as a source.
+
 ## Browse and read progressively
 
 ```sh

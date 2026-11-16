@@ -7,7 +7,8 @@ from .storage import ContextError, atomic_write, json_text
 
 def add_commands(sub):
     prepare = sub.add_parser("prepare", help="Preview or generate a navigable knowledge environment from text folders")
-    prepare.add_argument("--path", action="append", required=True, help="Source folder or text file relative to --root (repeatable)")
+    prepare.add_argument("--path", action="append", help="Source folder or text file relative to --root (repeatable)")
+    prepare.add_argument("--layout", choices=("icm",), help="Also create the missing ICM files and folders (CLAUDE.md, CONTEXT.md, sources/, examples/, working/, outputs/)")
     prepare.add_argument("--name")
     prepare.add_argument("--apply", action="store_true", help="Write the previewed maps and draft references; preserve original files")
     browse = sub.add_parser("browse", help="List current sources, headings and changes without opening a task")
@@ -37,9 +38,18 @@ def dispatch_environment(args):
         return None
     env = Environment(args.root)
     if args.command == "prepare":
-        result = env.prepare(args.path, apply=args.apply, name=args.name)
+        if not args.path and not args.layout:
+            raise ContextError("Select at least one source folder with --path, or use --layout icm.")
+        result = env.prepare(args.path, apply=args.apply, name=args.name) if args.path else {}
+        if args.layout:
+            from . import icm
+            result["layout"] = icm.scaffold(env, apply=args.apply)
     elif args.command == "browse":
         result = env.browse()
+        from . import icm
+        shown = icm.layout(env)
+        if shown:
+            result["layout"] = shown
     elif args.command == "find":
         result = env.find(args.query, args.limit)
     elif args.command == "read":
@@ -79,6 +89,8 @@ def dispatch_environment(args):
         for item in result["skipped"]:
             print(f"- Skipped {item['path']}: {item['reason']}")
         print("\n" + result["note"])
+        if "layout" in result:
+            _print_layout(result["layout"])
     else:
         print("# Source candidates\n")
         if not result["matches"]:
@@ -94,3 +106,13 @@ def dispatch_environment(args):
             print(f"- Skipped {item['path']}: {item['reason']}")
         print("\n" + result["note"])
     return 0
+
+
+def _print_layout(item):
+    print("\n# Layout\n")
+    print(f"- Standing file: {item['standing_file'] or 'none (no CLAUDE.md or AGENTS.md)'}")
+    if item["request_parts_missing_in_standing_file"]:
+        print("  Request parts with no text: " + ", ".join(item["request_parts_missing_in_standing_file"]))
+    print(f"- CONTEXT.md: {'present' if item['context_file'] else 'absent'}")
+    for name, present in item["folders"].items():
+        print(f"- {name}/: {'present' if present else 'absent'}")
