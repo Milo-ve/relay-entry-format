@@ -1,16 +1,17 @@
-# Relay Method development
+# OKF and ICM development
 
 Do not read `README.md` or whole documents by default: open `docs/INDEX.md`, then only the section the task needs. `docs/archive/` is history; read it only when asked.
 
 - Entry, controls, packet shape: `docs/REF.md`. Change it in the same commit.
+- Knowledge preparation and navigation: `docs/ENVIRONMENT.md`.
 - `relay` commands, tasks, review: the matching section of `docs/RELAY.md`.
 - `okf-icm` stage runs: `docs/PROTOCOL.md`.
 - A refused command: the matching entry of `docs/TROUBLESHOOTING.md`.
 - Jev: `docs/JEV.md`.
 
-Sessions: one task each. Ongoing work is a Relay task in the local `.context`: see `relay list --brief`, export with `relay context TASK`. End by recording the result or a short note.
+Read entry and selected sources. Tasks are optional: use `relay show TASK` and `relay context TASK` when assigned. Record results or a short note.
 
-Effort: route `reasoning` low or medium suits a small or standard model, high a frontier one. No task: standard.
+Effort: low/medium suits standard models; high suits frontier ones. Default: standard.
 
 Rules:
 

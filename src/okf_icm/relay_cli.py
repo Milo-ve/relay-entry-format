@@ -1,4 +1,4 @@
-"""Relay Method: proportional work, portable context, and version-specific review."""
+"""Legacy Relay tasks and utilities. For knowledge environments use okf-icm prepare."""
 from __future__ import annotations
 
 import argparse

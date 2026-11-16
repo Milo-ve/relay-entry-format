@@ -18,7 +18,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=__version__)
     p.add_argument("--root", type=Path, default=Path.cwd(), help="Project root (default: cwd). Place before the command.")
     sub = p.add_subparsers(dest="command", required=True)
-    init = sub.add_parser("init", help="Create .context without overwriting project files")
+    from .environment_cli import add_commands
+    add_commands(sub)
+    init = sub.add_parser("init", help="Create a legacy stage workspace; use prepare for a knowledge environment")
     init.add_argument("path", type=Path, nargs="?")
     init.add_argument("--name", default="My project")
     run = sub.add_parser("run", help="Start or checkpoint a task")
@@ -43,8 +45,8 @@ def parser() -> argparse.ArgumentParser:
     for name in ("status", "verify"):
         item = sub.add_parser(name, help="Read state and recompute freshness" if name == "status" else "Exit 1 if completed stages need review")
         item.add_argument("--run", required=True)
-    context = sub.add_parser("context", help="Export a bounded context packet and persist its receipt")
-    context.add_argument("--run", required=True)
+    context = sub.add_parser("context", help="Export selected knowledge context, or a legacy stage packet with --run")
+    context.add_argument("--run", help="Optional: use the legacy stage workflow for this run")
     context.add_argument("--stage")
     context.add_argument("--select", action="append", default=[], help="Project-relative path, optionally #Exact Markdown Heading")
     context.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -73,10 +75,32 @@ def parser() -> argparse.ArgumentParser:
 
 
 def dispatch(args) -> int:
+    from .environment_cli import dispatch_environment
+    handled = dispatch_environment(args)
+    if handled is not None:
+        return handled
     if args.command == "init":
         print(json_text(initialize(args.path or args.root, args.name)), end="")
         return 0
-    ws = Workspace(args.root)
+    if args.command == "adapter":
+        text = (f"# OKF + ICM entry ({args.kind})\n\n"
+                "Read `.context/navigation/ENTRY.md` when present, otherwise `.context/ENTRY.md`.\n"
+                "Use the knowledge map and open only sources needed for the current question.\n"
+                "Use `okf-icm browse`, `okf-icm find QUERY`, and `okf-icm read PATH`.\n"
+                "Prepare optional context with `okf-icm context --select PATH`; no run is required.\n"
+                "For an explicitly requested stage run, use `okf-icm status --run RUN` and\n"
+                "`okf-icm context --run RUN`. Apply the user's and host's instructions.\n"
+                "If files cannot be accessed, ask for the entry and the relevant sources.\n")
+        emit(text, args.out)
+        return 0
+    # Knowledge curation also works in task-free environments without config.json.
+    if args.command == "knowledge":
+        from .environment import Environment
+        ws = Environment(args.root)
+        if not ws.home.is_dir():
+            raise ContextError("Prepare an environment or initialize a legacy workspace first.")
+    else:
+        ws = Workspace(args.root)
     if args.command in {"status", "verify"}:
         report = ws.status(args.run)
         print(json_text(report), end="")
@@ -85,14 +109,6 @@ def dispatch(args) -> int:
         report = knowledge.inspect_bundle(ws)
         print(json_text(report), end="")
         return int(bool(report["errors"]))
-    if args.command == "adapter":
-        text = (f"# OKF + ICM entry ({args.kind})\n\n"
-                "Read `.context/ENTRY.md`. Use the explicit run ID given by the user.\n"
-                "Run `okf-icm status --run RUN` and export `okf-icm context --run RUN`.\n"
-                "Follow the exported stage contract within the host's own instruction hierarchy.\n"
-                "If tools are unavailable, ask the operator to paste the exported packet.\n")
-        emit(text, args.out)
-        return 0
     with lock(ws.home, wait=settings.load(ws.home)["lock_wait_seconds"]):
         if args.command == "context":
             # Check output first so an existing destination doesn't create an orphan export.

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "okf-icm"
-version = "0.4.0"
-description = "Relay Method: adaptive effort, portable context, and reviewable work built on OKF + ICM"
+version = "0.5.0"
+description = "OKF + ICM: local knowledge environments, progressive navigation and portable context"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

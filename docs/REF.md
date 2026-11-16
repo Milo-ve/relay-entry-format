@@ -4,6 +4,36 @@ REF names the part of Relay that a person or assistant meets first: the workspac
 
 The rest of the lifecycle (effort routing, submissions, review, freshness, views) is the [Relay Method task layer](RELAY.md). REF is the format those operations read and write at the edge.
 
+The primary knowledge-first interface now has an additional, independent context
+contract described below. Existing v1 task and stage formats remain unchanged.
+
+## Knowledge environments REF v2
+
+`okf-icm prepare --path FOLDER [--apply]` creates a task-free knowledge environment.
+Its entry and maps let people and assistants read progressively. It creates missing
+entry, project and policy controls; existing controls are never rewritten. It adds
+navigation under `.context/navigation/`, plus draft source references in the OKF
+knowledge bundle. Details and limitations are in [Knowledge environments](ENVIRONMENT.md).
+
+`okf-icm context --select PATH` without `--run` exports a new packet kind:
+`schema_version: 2`, `kind: "knowledge-context"`, `files`, and `packet_id`.
+File records use `path`, `section`, `role`, `sha256`, and `content` as in v1.
+The entry, policy and project are included as controls, along with `config.json`
+when it exists. Other sources are data. JSON strings frame source contents in
+the Markdown export. The ID uses the existing sorted-key JSON hash excluding
+`packet_id`. Budgets apply to the complete rendered export.
+
+There is no run, task, stage, submission, reviewer or acceptance in this packet.
+Exporting creates no receipt or other state; only an explicit `--out` writes a new
+file outside `.context`. The v2 context is not accepted by legacy checkpoint or
+submission commands. Their v1 schemas, controls and graph requirements remain intact.
+
+REF v2 here names this additional entry and context interface, not a migration of
+v1 or a change to OKF itself. The navigation catalog has its own projection schema
+and is not a workspace version marker. Existing projects gain no config marker
+and no silently migrated stage graph. A generated reference or matching hash is
+not substantive verification, identity or acceptance.
+
 ## What REF covers
 
 | Part      | Location                                                               | Role                                                                          |

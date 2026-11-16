@@ -19,3 +19,4 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python examples/smoke.py
       - run: python examples/relay_smoke.py
+      - run: python examples/environment_smoke.py

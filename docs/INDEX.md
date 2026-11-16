@@ -4,6 +4,7 @@ Find the line for your task, then read only the section you need. `RELAY.md` and
 
 Current behavior:
 
+- [ENVIRONMENT.md](ENVIRONMENT.md): primary knowledge-first path: prepare maps and draft references, browse, find, read and export context without runs or tasks.
 - [REF.md](REF.md): what the entry, the control files and a packet are. Read when changing any of them.
 - [RELAY.md](RELAY.md): exact behavior of every `relay` command, routing, review and settings. Read when changing or using task commands.
 - [PROTOCOL.md](PROTOCOL.md): conventions of the six-stage `okf-icm` workflow. Read when working on stage runs, checkpoints or knowledge.
