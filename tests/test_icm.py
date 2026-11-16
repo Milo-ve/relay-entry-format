@@ -1,0 +1,359 @@
+"""ICM workspace layer on synthetic folders: exclusions, scaffold, budget headings and the request."""
+import contextlib
+import io
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+from okf_icm import icm
+from okf_icm.cli import main
+from okf_icm.environment import Environment
+from okf_icm.storage import ContextError
+
+CLAUDE = "# Rules\n\n## Identity\nYou are a careful engineer.\n\n## Constraints\n- No network.\n\n## Format\nA patch and three lines.\n\n## Paths\nRead docs.\n"
+
+
+class IcmBase(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.env = Environment(self.root)
+
+    def write(self, relative, text="# Title\n\nBody.\n"):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def snapshot(self):
+        return {p.relative_to(self.root).as_posix(): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+
+
+class ExclusionTests(IcmBase):
+    def test_folder_scans_skip_working_and_outputs_but_explicit_paths_do_not(self):
+        for name in ("docs/a.md", "docs/working/draft.md", "docs/outputs/final.md", "outputs/top.md"):
+            self.write(name)
+        items, _ = self.env.scan(["docs"])
+        self.assertEqual([i["path"] for i in items], ["docs/a.md"])
+        items, _ = self.env.scan(["outputs"])
+        self.assertEqual([i["path"] for i in items], ["outputs/top.md"])
+
+
+class ExportBase(IcmBase):
+    def setUp(self):
+        super().setUp()
+        self.write("docs/offer.md", "# Offer\n\n## Scope\n\nInterview and report.\n")
+        self.write("examples/good.md", "# Good\n\nA sample.\n")
+        self.env.prepare(["docs"], apply=True, name="Synthetic")
+
+    def run_cli(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--root", str(self.root), *args])
+        return code, out.getvalue(), err.getvalue()
+
+
+class BudgetTests(ExportBase):
+    def test_plain_export_is_not_changed_by_the_layer(self):
+        code, out, _ = self.run_cli("context", "--select", "docs/offer.md")
+        _, expected = self.env.context(["docs/offer.md"])
+        self.assertEqual((code, out), (0, expected))
+        self.assertNotIn("Context budget", out)
+
+    def test_budget_keeps_the_same_packet_as_plain_selection(self):
+        packet, _, _ = icm.export(self.env, ["docs/offer.md#Scope"])
+        plain, _ = self.env.context(["docs/offer.md#Scope"])
+        self.assertEqual(packet["packet_id"], plain["packet_id"])
+        self.assertEqual([f["role"] for f in packet["files"]], [f["role"] for f in plain["files"]])
+
+    def test_each_file_names_its_heading_and_the_rule(self):
+        self.write("history/2026-10.md", "# Earlier\n\nNotes.\n")
+        self.write("docs/examples/bad.md", "# Bad\n\nA miss.\n")
+        _, text, _ = icm.export(self.env, ["docs/offer.md", "docs/examples/bad.md"], examples=["examples/good.md"],
+                                history=["history/2026-10.md"])
+        self.assertIn("### .context/policy.md (role control; placed by role control)", text)
+        self.assertIn("### docs/offer.md (role artifact; placed by --select)", text)
+        self.assertIn("### docs/examples/bad.md (role artifact; placed by path segment examples/)", text)
+        self.assertIn("### examples/good.md (role artifact; placed by --example)", text)
+        self.assertIn("### history/2026-10.md (role artifact; placed by --history)", text)
+        self.assertLess(text.index("## History"), text.index("## Material"))
+        self.assertLess(text.index("## Material"), text.index("## Examples"))
+
+    def test_explicit_flag_beats_path_segment_and_select(self):
+        _, text, _ = icm.export(self.env, ["examples/good.md"], history=["examples/good.md"])
+        self.assertIn("### examples/good.md (role artifact; placed by --history)", text)
+        self.assertEqual(text.count("### examples/good.md"), 1)
+
+    def test_size_table_matches_the_rendered_export(self):
+        _, text, _ = icm.export(self.env, ["docs/offer.md"])
+        total = int(text.split("| Total | | ")[1].split(" of ")[0].replace(",", ""))
+        self.assertEqual(total, len(text))
+        self.assertIn("of 32,000", text)
+
+    def test_oversize_export_fails_without_dropping_anything(self):
+        with self.assertRaisesRegex(ContextError, "exceeds 500 characters"):
+            icm.export(self.env, ["docs/offer.md"], max_chars=500)
+
+    def test_selection_is_required(self):
+        with self.assertRaisesRegex(ContextError, "explicit --select"):
+            icm.export(self.env, [])
+
+    def test_export_writes_nothing(self):
+        before = self.snapshot()
+        icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="x")
+        self.assertEqual(before, self.snapshot())
+
+
+class PromptTests(ExportBase):
+    def test_parts_are_copied_verbatim_and_files_are_added(self):
+        self.write("CLAUDE.md", CLAUDE)
+        self.write("CONTEXT.md", "# Context\n\nDomain.\n")
+        packet, text, unfilled = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="Draft the scope.")
+        self.assertEqual(unfilled, [])
+        self.assertIn("## 1. Identity\nYou are a careful engineer.\n", text)
+        self.assertIn("## 2. Task\nDraft the scope.\n", text)
+        self.assertIn("## 4. Constraints\n- No network.\n", text)
+        self.assertIn("## 5. Format\nA patch and three lines.\n", text)
+        roles = {f["path"]: f["role"] for f in packet["files"]}
+        self.assertEqual((roles["CLAUDE.md"], roles["CONTEXT.md"]), ("control", "artifact"))
+        self.assertIn("### CLAUDE.md (role control; placed by role control, added by --with-prompt)", text)
+        self.assertIn("### CONTEXT.md (role artifact; placed by --with-prompt, project context file)", text)
+        self.assertIn("policy.md wins", text)
+        self.assertIn("also counted under Standing instructions", text)
+
+    def test_missing_parts_become_todo_and_are_reported(self):
+        self.write("CLAUDE.md", "# Rules\n\n## Identity\nYou are an engineer.\n")
+        _, text, unfilled = icm.export(self.env, ["docs/offer.md"], with_prompt=True)
+        self.assertEqual(unfilled, ["2 Task", "4 Constraints", "5 Format"])
+        self.assertIn("TODO: state the task", text)
+        self.assertIn("TODO: CLAUDE.md has no `## Constraints` section", text)
+
+    def test_spanish_headings_are_accepted(self):
+        self.write("CLAUDE.md", "# Reglas\n\n## Identidad\nEres ingeniera.\n\n## Restricciones\nSin red.\n\n## Formato\nUn parche.\n")
+        _, text, unfilled = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="t")
+        self.assertEqual(unfilled, [])
+        self.assertIn("Eres ingeniera.", text)
+
+    def test_agents_file_is_used_when_claude_only_imports_it(self):
+        self.write("CLAUDE.md", "<!-- relay-claude -->\n@AGENTS.md\n<!-- /relay-claude -->\n")
+        self.write("AGENTS.md", CLAUDE)
+        packet, text, unfilled = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="t")
+        paths = [f["path"] for f in packet["files"]]
+        self.assertIn("AGENTS.md", paths)
+        self.assertNotIn("CLAUDE.md", paths)
+        self.assertIn("only imports AGENTS.md", text)
+        self.assertEqual(unfilled, [])
+
+    def test_agents_file_alone_is_the_fallback(self):
+        self.write("AGENTS.md", CLAUDE)
+        packet, _, _ = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="t")
+        self.assertIn("AGENTS.md", [f["path"] for f in packet["files"]])
+
+    def test_no_standing_file_still_exports_with_a_note(self):
+        _, text, unfilled = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="t")
+        self.assertIn("No CLAUDE.md or AGENTS.md in the project root", text)
+        self.assertEqual(unfilled, ["1 Identity", "4 Constraints", "5 Format"])
+        self.assertNotIn("policy.md wins", text)
+
+    def test_denied_standing_file_is_reported_not_dropped_silently(self):
+        self.write("CLAUDE.md", CLAUDE)
+        (self.root / ".context/relay").mkdir(parents=True, exist_ok=True)
+        (self.root / ".context/relay/settings.json").write_text(json.dumps({"deny_paths": ["CLAUDE.md"]}))
+        env = Environment(self.root)
+        packet, text, _ = icm.export(env, ["docs/offer.md"], with_prompt=True, task="t")
+        self.assertNotIn("CLAUDE.md", [f["path"] for f in packet["files"]])
+        self.assertIn("Not included: CLAUDE.md", text)
+
+    def test_prompt_packet_differs_from_plain_only_by_added_files(self):
+        self.write("CLAUDE.md", CLAUDE)
+        plain, _ = self.env.context(["docs/offer.md"])
+        packet, _, _ = icm.export(self.env, ["docs/offer.md"], with_prompt=True, task="t")
+        extra = [f["path"] for f in packet["files"] if f["path"] not in {x["path"] for x in plain["files"]}]
+        self.assertEqual(extra, ["CLAUDE.md"])
+
+
+class CliTests(ExportBase):
+    def test_task_free_prompt_end_to_end_reports_unfilled_on_stderr(self):
+        self.write("CLAUDE.md", CLAUDE)
+        code, out, err = self.run_cli("context", "--select", "docs/offer.md", "--with-prompt")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("# Request"))
+        self.assertIn("Request parts still to fill: 2 Task", err)
+
+    def test_out_file_is_new_and_outside_context(self):
+        target = self.root / "task.md"
+        code, out, _ = self.run_cli("context", "--select", "docs/offer.md", "--budget", "--out", str(target))
+        self.assertEqual(code, 0)
+        self.assertIn("# Context budget", target.read_text())
+        self.assertEqual(self.run_cli("context", "--select", "docs/offer.md", "--budget", "--out", str(target))[0], 2)
+
+    def test_refusals(self):
+        cases = [("--run", "r", "--budget"), ("--format", "json", "--budget"), ("--with-prompt", "--format", "json"),
+                 ("--task", "x"), ("--example", "examples/good.md"), ("--history", "docs/offer.md")]
+        for extra in cases:
+            with self.subTest(extra=extra):
+                self.assertEqual(self.run_cli("context", "--select", "docs/offer.md", *extra)[0], 2)
+
+
+class ScaffoldTests(IcmBase):
+    def test_preview_creates_nothing_and_names_what_it_would_create(self):
+        before = self.snapshot()
+        report = icm.scaffold(self.env)
+        self.assertFalse(report["applied"])
+        self.assertEqual(report["create"], ["CLAUDE.md", "CONTEXT.md", "sources/.gitkeep", "examples/.gitkeep",
+                                            "working/.gitkeep", "outputs/.gitkeep"])
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse((self.root / ".context").exists())
+
+    def test_apply_creates_missing_items_and_is_then_a_no_op(self):
+        report = icm.scaffold(self.env, apply=True)
+        self.assertTrue(report["applied"])
+        self.assertTrue((self.root / "CLAUDE.md").read_text().startswith("# CLAUDE.md"))
+        for name in icm.FOLDERS:
+            self.assertTrue((self.root / name).is_dir())
+        again = icm.scaffold(self.env, apply=True)
+        self.assertEqual((again["applied"], again["create"]), (False, []))
+        self.assertIn("CLAUDE.md", again["present"])
+
+    def test_existing_files_and_folders_are_kept_byte_for_byte(self):
+        self.write("CLAUDE.md", "mine\n")
+        self.write("CONTEXT.md", "also mine\n")
+        keep = self.write("sources/a.md", "# A\n")
+        icm.scaffold(self.env, apply=True)
+        self.assertEqual((self.root / "CLAUDE.md").read_text(), "mine\n")
+        self.assertEqual((self.root / "CONTEXT.md").read_text(), "also mine\n")
+        self.assertEqual(keep.read_text(), "# A\n")
+        self.assertFalse((self.root / "sources/.gitkeep").exists())
+
+    def test_agents_file_is_not_shadowed_by_a_template(self):
+        self.write("AGENTS.md", "# Agents\n")
+        report = icm.scaffold(self.env, apply=True)
+        self.assertFalse((self.root / "CLAUDE.md").exists())
+        self.assertTrue(any("AGENTS.md is the standing file" in n for n in report["notes"]))
+
+    def test_a_file_where_a_folder_belongs_is_reported_not_replaced(self):
+        self.write("outputs", "a file\n")
+        report = icm.scaffold(self.env, apply=True)
+        self.assertEqual(report["conflicts"], ["outputs exists and is not a folder"])
+        self.assertEqual((self.root / "outputs").read_text(), "a file\n")
+
+    def test_symbolic_links_are_refused(self):
+        target = self.root / "elsewhere"
+        target.mkdir()
+        (self.root / "sources").symlink_to(target)
+        with self.assertRaises(ContextError):
+            icm.scaffold(self.env, apply=True)
+
+    def test_a_failed_write_restores_the_project(self):
+        before = self.snapshot()
+        from unittest.mock import patch
+        real = icm.atomic_write
+        calls = []
+        def flaky(path, text, **kw):
+            calls.append(path)
+            if len(calls) == 4:
+                raise OSError("disk full")
+            return real(path, text, **kw)
+        with patch.object(icm, "atomic_write", flaky), self.assertRaises(OSError):
+            icm.scaffold(self.env, apply=True)
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse((self.root / "sources").exists())
+
+    def test_scaffolded_standing_file_is_exportable_with_todo_parts_only_for_placeholders(self):
+        self.write("docs/a.md")
+        self.env.prepare(["docs"], apply=True)
+        icm.scaffold(self.env, apply=True)
+        _, text, unfilled = icm.export(self.env, ["docs/a.md"], with_prompt=True, task="t")
+        self.assertEqual(unfilled, [])
+        self.assertIn("You are a <role>", text)
+
+
+class LayoutCliTests(ExportBase):
+    def test_prepare_requires_a_path_or_a_layout(self):
+        self.assertEqual(self.run_cli("prepare")[0], 2)
+
+    def test_layout_only_preview_then_apply(self):
+        code, out, _ = self.run_cli("prepare", "--layout", "icm")
+        self.assertEqual(code, 0)
+        self.assertFalse(json.loads(out)["layout"]["applied"])
+        self.assertFalse((self.root / "CONTEXT.md").exists())
+        code, out, _ = self.run_cli("prepare", "--layout", "icm", "--apply")
+        self.assertTrue(json.loads(out)["layout"]["applied"])
+        self.assertTrue((self.root / "CONTEXT.md").is_file())
+
+    def test_prepare_with_path_and_layout_reports_both(self):
+        code, out, _ = self.run_cli("prepare", "--path", "docs", "--layout", "icm")
+        data = json.loads(out)
+        self.assertEqual(code, 0)
+        self.assertIn("sources", data)
+        self.assertIn("create", data["layout"])
+
+    def test_browse_is_unchanged_without_icm_items_and_shows_layout_with_them(self):
+        import shutil
+        shutil.rmtree(self.root / "examples")
+        code, out, _ = self.run_cli("browse", "--format", "json")
+        self.assertNotIn("layout", json.loads(out))
+        self.assertNotIn("# Layout", self.run_cli("browse")[1])
+        self.write("CLAUDE.md", "# R\n\n## Identity\nYou are X.\n")
+        data = json.loads(self.run_cli("browse", "--format", "json")[1])
+        self.assertEqual(data["layout"]["standing_file"], "CLAUDE.md")
+        self.assertEqual(data["layout"]["request_parts_missing_in_standing_file"], ["Constraints", "Format"])
+        self.assertIn("Request parts with no text: Constraints, Format", self.run_cli("browse")[1])
+
+
+class EntryTests(IcmBase):
+    def setUp(self):
+        super().setUp()
+        self.write("docs/a.md")
+
+    def entries(self):
+        return ((self.root / ".context/ENTRY.md").read_text(), (self.root / ".context/navigation/ENTRY.md").read_text())
+
+    def test_classic_entry_without_icm_files_and_no_notes_key(self):
+        report = self.env.prepare(["docs"], apply=True, name="P")
+        for text in self.entries():
+            self.assertIn("Use `okf-icm browse`", text)
+            self.assertNotIn("CLAUDE.md", text)
+        self.assertNotIn("notes", report)
+
+    def test_instruction_files_choose_the_icm_entry_when_it_is_created(self):
+        self.write("CONTEXT.md", "# C\n")
+        self.env.prepare(["docs"], apply=True, name="P")
+        root_entry, nav_entry = self.entries()
+        self.assertIn("`CLAUDE.md` and `CONTEXT.md` in the project root", root_entry)
+        self.assertIn("[policy](policy.md)", root_entry)
+        self.assertIn("[policy](../policy.md)", nav_entry)
+        self.assertIn("[the knowledge map](index.md)", nav_entry)
+
+    def test_layout_flag_chooses_the_icm_entry_on_a_new_environment(self):
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertIn("with-prompt", self.entries()[0])
+
+    def test_existing_entries_are_kept_and_the_preview_says_so(self):
+        self.env.prepare(["docs"], apply=True, name="P")
+        before = self.entries()
+        report = self.env.prepare(["docs"], name="P", layout=True)
+        self.assertIn(".context/ENTRY.md", report["notes"][0])
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertEqual(before, self.entries())
+
+    def test_an_existing_icm_entry_needs_no_note(self):
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertNotIn("notes", self.env.prepare(["docs"], name="P", layout=True))
+
+    def test_repeated_preparation_stays_byte_identical_with_icm_files(self):
+        self.write("CLAUDE.md", "# R\n")
+        self.env.prepare(["docs"], apply=True, name="P")
+        before = self.snapshot()
+        result = self.env.prepare(["docs"], apply=True, name="P")
+        self.assertEqual((result["applied"], result["changes"]), (False, []))
+        self.assertEqual(before, self.snapshot())
+
+    def test_the_icm_entry_stays_small(self):
+        self.assertLess(len(icm.ENTRY_ICM.format(title="A reasonably long project title")), 1500)
+
+
+if __name__ == "__main__":
+    unittest.main()

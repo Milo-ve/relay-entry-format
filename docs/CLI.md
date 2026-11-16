@@ -6,20 +6,10 @@ overwrites an existing file.
 
 ## Primary knowledge interface
 
-```sh
-okf-icm --root ./project prepare --path docs
-okf-icm --root ./project prepare --path docs --apply
-okf-icm --root ./project browse
-okf-icm --root ./project find "project decisions"
-okf-icm --root ./project read 'docs/decisions.md#Current'
-okf-icm --root ./project context --select 'docs/decisions.md#Current' --out selected-context.md
-```
-
-Select existing paths and headings. These commands do not need a run or task.
-`browse`, `find` and `read` accept `--format json`; context retains its existing
-`markdown`/`json` options. Knowledge curation works in both task-free and older
-workspaces. See [Knowledge environments](ENVIRONMENT.md) for generation,
-preservation, conflicts, exclusions and retrieval limitations.
+`prepare`, `browse`, `find`, `read` and task-free `context`, including
+`--layout icm`, `--budget` and `--with-prompt`, are documented in
+[Knowledge environments](ENVIRONMENT.md). This page covers the stage,
+checkpoint, knowledge and snippet commands.
 
 ## Legacy stage interface
 

@@ -1,5 +1,7 @@
 # Evaluation
 
+**Status: archived on 2026-11-15, never run. A cross-assistant test plan for the six-stage workflow; the scorecard was never filled. `examples/prepare_demo.py` still prepares its workspace.**
+
 All prices, organizations and source documents in this demo are synthetic.
 
 ## Prepare
@@ -69,7 +71,7 @@ That is a failure of protocol use, not a successful invalidation test.
 
 ## Chat without filesystem access
 
-An operator exports/pastes a packet using the [CLI reference](CLI.md), then uses:
+An operator exports/pastes a packet using the [CLI reference](../CLI.md), then uses:
 
 ```text
 Trabaja solo con el paquete pegado arriba. No tienes acceso a archivos ni CLI.

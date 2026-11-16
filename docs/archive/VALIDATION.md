@@ -1,5 +1,7 @@
 # Validation record
 
+**Status: archived on 2026-11-15. This records what was checked for the first stage release (0.2.0, 43 tests); it does not describe the current release.**
+
 Local environment: macOS ARM64, Python 3.11.15, PyYAML 6.0.3.
 
 ## Performed

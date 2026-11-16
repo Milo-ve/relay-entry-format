@@ -36,6 +36,25 @@ Sources remain in place. Directory maps link down to child maps and back to thei
 
 Existing entry, project, policy, index, log, configuration and run files are preserved byte for byte. In an older project, open `.context/navigation/ENTRY.md` to use this path. Preparation does not rewrite an existing entry that still describes stages or tasks. Deliberately integrate the navigation entry into your host instructions if desired; the tool does not modify `AGENTS.md` or `CLAUDE.md` automatically.
 
+### ICM folder layout
+
+```sh
+okf-icm --root /path/to/project prepare --layout icm
+okf-icm --root /path/to/project prepare --layout icm --apply
+```
+
+Optional. The preview lists what would be created; `--apply` creates only what is missing and changes nothing that exists. `--path` may be added to prepare sources in the same call, and `--path` is no longer required when `--layout` is given.
+
+```text
+CLAUDE.md    standing instructions (starter text)    yours to edit afterwards
+CONTEXT.md   domain, decisions and a Map section     yours to edit afterwards
+sources/  examples/  working/  outputs/              empty folders (a .gitkeep file each)
+```
+
+If the project has an `AGENTS.md` and no `CLAUDE.md`, no `CLAUDE.md` is created, so a starter text cannot shadow your instructions. A file where a folder belongs is reported and left alone, symbolic links are refused, and a failed write restores the project. Nothing is moved or renamed. `browse` lists which of these exist and which request parts (Identity, Constraints, Format) the standing file lacks; it adds nothing to its output in projects with none of them. The printed next step is `okf-icm prepare --path sources --path examples --path CONTEXT.md --apply`; `CLAUDE.md` is deliberately not indexed as a source.
+
+The entries `prepare` creates use an ICM variant of their text when the root already has `CLAUDE.md` or `CONTEXT.md`, or when `--layout icm` was given; otherwise the text is unchanged. Only a newly created entry changes. An existing `.context/ENTRY.md` or `.context/navigation/ENTRY.md` is never rewritten, and a preview with `--layout icm` names the ones kept so you can merge the text by hand.
+
 ## Browse and read progressively
 
 ```sh
@@ -63,6 +82,21 @@ Explicit selections are required. This [REF v2 context](REF.md#knowledge-environ
 
 The default budget is 32,000 rendered characters. Oversized context fails rather than silently removing required sources. Select headings or fewer files to reduce it. The packet hash identifies the exact export; hashes do not prove the claims in it. Without `--out`, export writes only stdout. With `--out`, it creates a new file outside `.context` and never overwrites an existing destination. No persisted packet receipt is created.
 
+### Context budget and a five-part request
+
+Two optional flags render the same records under context-budget headings. Without them the export is unchanged.
+
+```sh
+okf-icm context --select docs/api.md --budget
+okf-icm context --select docs/api.md --with-prompt --task "Add idempotency keys" > task.md
+```
+
+`--budget` groups files under Standing instructions, History, Material and Examples, labels each with the rule that placed it, and ends the header with a size table whose total is the whole rendered export. A file is Standing when it has the role `control`; Examples or History when named by `--example PATH` or `--history PATH` (repeatable; an explicit flag wins) or when a directory in its path is `examples` or `history`; otherwise Material. The packet and `packet_id` equal the plain export of the same files.
+
+`--with-prompt` adds a five-part request (Identity, Task, Context, Constraints, Format) above the budget and includes the root `CLAUDE.md` as a `control`, and `CONTEXT.md` as data, when they exist. If `CLAUDE.md` holds only an `@AGENTS.md` import, `AGENTS.md` is used; with no `CLAUDE.md`, `AGENTS.md` is the fallback. Identity, Constraints and Format are copied verbatim from the exact `## Identity`, `## Constraints` and `## Format` headings of that file (`Identidad`, `Restricciones`, `Formato` also work), so they also appear in its full record; the size table says how many characters repeat. Task is `--task TEXT`. A part with no text prints a `TODO` line and is listed on stderr. `policy.md` governs workflow, authority and review; on conflict it wins. A standing file that cannot be read or is denied by `deny_paths` is reported in the request, not dropped silently. The request text is not part of the hash, and nothing is written except an explicit `--out`.
+
+Both flags need Markdown output and explicit `--select`, `--example` or `--history`, and are refused with `--run` or `--format json`. `CLAUDE.md` travels with the export, so check it for secrets first. The [design record](archive/icm-workspace.md) explains the choices.
+
 ## Keep the environment current
 
 Repeat preparation with the same `--path` values after changing sources. The catalog is disposable navigation metadata, not operational acceptance state. Generation is deterministic and an unchanged selection produces no file changes.
@@ -75,7 +109,7 @@ The writer uses the existing cooperative lock, rechecks the plan under it, and a
 
 ## Boundaries
 
-The selected root must already exist. Parent traversal, escaping paths and symbolic links in managed output paths are refused. Source symlinks are not scanned. Hidden folders, virtual environments, Git metadata, internal runtime state, dependencies, backups and generated deliverables are excluded from discovery. Only `.context/knowledge` may be explicitly selected from `.context`; generated imported references are skipped to avoid self-import. Existing configured `deny_paths` apply before source reads and exports, including explicit reads.
+The selected root must already exist. Parent traversal, escaping paths and symbolic links in managed output paths are refused. Source symlinks are not scanned. Hidden folders, virtual environments, Git metadata, internal runtime state, dependencies, backups, drafts (`working`) and generated deliverables (`deliverables`, `artifacts`, `outputs`) are excluded when a folder is scanned. Naming one of them directly in `--path` still scans it. Before this exclusion, `working` and `outputs` folders under a selected folder were indexed; re-run preparation to see them reported as removed. Only `.context/knowledge` may be explicitly selected from `.context`; generated imported references are skipped to avoid self-import. Existing configured `deny_paths` apply before source reads and exports, including explicit reads.
 
 Source contents are limited to 1 MB each and the catalog to 2,000 text files. Exceeding the catalog bound fails preparation. The new `.context/.gitignore` excludes local state when created; it cannot remove files already committed to Git or repair an existing ignore file. Check tracked files before publishing. Path filtering cannot identify every secret in an otherwise permitted document.
 
@@ -88,6 +122,7 @@ Synthetic tests cover preview without writes, valid unverified references, repea
 ```sh
 python -m unittest discover -s tests -v
 python examples/environment_smoke.py
+python examples/icm_smoke.py
 ```
 
 These checks do not establish semantic completeness, automatic extraction of verified knowledge, real-user speed, long-term maintenance cost or cross-client assistant behavior. A useful next observation is whether a person unfamiliar with a project can find a supported answer and identify missing information faster than with an ordinary folder index, including preparation cost.

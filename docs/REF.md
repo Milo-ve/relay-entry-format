@@ -23,6 +23,8 @@ when it exists. Other sources are data. JSON strings frame source contents in
 the Markdown export. The ID uses the existing sorted-key JSON hash excluding
 `packet_id`. Budgets apply to the complete rendered export.
 
+`--budget` and `--with-prompt` render the same records under context-budget headings, and with `--with-prompt` add the root `CLAUDE.md` (role `control`, or `AGENTS.md` as its fallback) and `CONTEXT.md` (`artifact`) when present. No schema field or version marker is added, and without those flags the export is unchanged ([details](ENVIRONMENT.md#context-budget-and-a-five-part-request)).
+
 There is no run, task, stage, submission, reviewer or acceptance in this packet.
 Exporting creates no receipt or other state; only an explicit `--out` writes a new
 file outside `.context`. The v2 context is not accepted by legacy checkpoint or
