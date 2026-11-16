@@ -65,14 +65,9 @@ relay --root ./my-project workspace                     # preview, no writes
 relay --root ./my-project workspace --apply --name "My project"
 ```
 
-Before changes, it saves the previous layout and exact originals of files it will
-modify under `.relay-backups/workspace-*/`. It appends guidance to `AGENTS.md`,
-adds ignore rules, and initializes `.context` only if absent. It keeps source
-files in place and preserves existing controls, runs, tasks and stage graphs.
-An incompatible existing workspace is refused. Repeating a completed adaptation
-does not duplicate the guidance or backup. Backups cover modified files and the
-layout, not all project contents. See [workspace adaptation](RELAY.md#workspace-adaptation)
-for rollback and privacy limits.
+It backs up what it changes under `.relay-backups/`, appends guidance to
+`AGENTS.md` and moves no sources. What it writes, how to undo it and what the
+backup may expose are in [workspace adaptation](RELAY.md#workspace-adaptation).
 
 ### Portable REF skill (implementation candidate)
 
@@ -88,20 +83,14 @@ relay skill --name ref --manual dist/ref-manual.md  # standalone guide + return 
 
 Paths and invocation syntax follow the client documentation
 ([Codex](https://learn.chatgpt.com/docs/build-skills),
-[Claude Code](https://code.claude.com/docs/en/skills)); observed cross-client
-compatibility remains a separate release gate. See the
-[validation record](ref-validation.md). `/REF` uppercase is not a promised
-universal command. Installation never prepares a workspace or changes global
-configuration. Different existing skill contents are refused, including customized
-references. Inspect visible local/global copies if discovery is ambiguous.
-`relay skill --to DIRECTORY` still installs `relay-workspace` by default.
+[Claude Code](https://code.claude.com/docs/en/skills)). Installing a folder
+does not prove the client discovers it; observed compatibility is tracked in the
+[validation record](ref-validation.md). Installer behavior is in
+[portable skill](RELAY.md#portable-skill-and-manual-return).
 
-For a requested Claude instruction bridge, preview
-`relay --root PROJECT workspace --claude`, then add `--apply` to back up and
-append `@AGENTS.md` to `CLAUDE.md`. No bridge is added by default. New entry
-scaffolds point to the optional skills in one sentence; existing controls are preserved. Physical file
-reorganization, MCP and publishing are later deliveries in the
-[implementation plan](archive/ref-command-plan.md).
+For a Claude instruction bridge, preview
+`relay --root PROJECT workspace --claude`, then add `--apply`. No bridge is added
+by default.
 
 ## What this guide does not establish
 
