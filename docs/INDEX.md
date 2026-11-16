@@ -15,13 +15,10 @@ Current behavior:
 Guides:
 
 - [TRY.md](TRY.md): 20-minute first trial on a real folder, with what to report back.
-- [WALKTHROUGH.md](WALKTHROUGH.md): one task from `start` to `review`, command by command.
 - [ADOPTION.md](ADOPTION.md): setup practices and which interface suits which audience. Recommendations, not measurements.
-- [EVALUATION.md](EVALUATION.md): prompts and scorecard for the synthetic stage demo across assistants.
 
 Evidence records (read before making a claim about quality or compatibility):
 
-- [VALIDATION.md](VALIDATION.md): what the first stage release checked on one machine.
 - [ref-validation.md](ref-validation.md): offline checks versus observed client behavior for the `ref` skill.
 - [navigate-results.md](navigate-results.md): measured results and limits of `relay navigate`.
 - [jev-results.md](jev-results.md): one live shadow run of Jev on synthetic cases, and what it does not show.
