@@ -95,7 +95,7 @@ okf-icm context --select docs/api.md --with-prompt --task "Add idempotency keys"
 
 `--with-prompt` adds a five-part request (Identity, Task, Context, Constraints, Format) above the budget and includes the root `CLAUDE.md` as a `control`, and `CONTEXT.md` as data, when they exist. If `CLAUDE.md` holds only an `@AGENTS.md` import, `AGENTS.md` is used; with no `CLAUDE.md`, `AGENTS.md` is the fallback. Identity, Constraints and Format are copied verbatim from the exact `## Identity`, `## Constraints` and `## Format` headings of that file (`Identidad`, `Restricciones`, `Formato` also work), so they also appear in its full record; the size table says how many characters repeat. Task is `--task TEXT`. A part with no text prints a `TODO` line and is listed on stderr. `policy.md` governs workflow, authority and review; on conflict it wins. A standing file that cannot be read or is denied by `deny_paths` is reported in the request, not dropped silently. The request text is not part of the hash, and nothing is written except an explicit `--out`.
 
-Both flags need Markdown output and explicit `--select`, `--example` or `--history`, and are refused with `--run` or `--format json`. `CLAUDE.md` travels with the export, so check it for secrets first. See the [proposal](ICM-WORKSPACE.md) for the design.
+Both flags need Markdown output and explicit `--select`, `--example` or `--history`, and are refused with `--run` or `--format json`. `CLAUDE.md` travels with the export, so check it for secrets first. The [design record](archive/icm-workspace.md) explains the choices.
 
 ## Keep the environment current
 
@@ -122,6 +122,7 @@ Synthetic tests cover preview without writes, valid unverified references, repea
 ```sh
 python -m unittest discover -s tests -v
 python examples/environment_smoke.py
+python examples/icm_smoke.py
 ```
 
 These checks do not establish semantic completeness, automatic extraction of verified knowledge, real-user speed, long-term maintenance cost or cross-client assistant behavior. A useful next observation is whether a person unfamiliar with a project can find a supported answer and identify missing information faster than with an ordinary folder index, including preparation cost.

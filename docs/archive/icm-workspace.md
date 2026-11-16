@@ -1,6 +1,6 @@
 # ICM workspace layer: proposal
 
-**Status: decisions 1 to 5 accepted on 2026-11-15; implementation follows the plan below.** This page was written before the code and is corrected where the code showed a premise wrong. It answers a brief to align `okf-icm` with the ICM framework (Instruction, Context, Memory) as a production workspace, keeping the knowledge-first commands. The accepted decisions are in [Decisions](#decisions-for-the-maintainer).
+**Status: implemented on branch `feat/icm-layer`; decisions 1 to 5 accepted on 2026-11-15. Current behavior is in [ENVIRONMENT.md](../ENVIRONMENT.md); this page is the design record.** It was written before the code and corrected where the code showed a premise wrong (the entries are create-once, not regenerated). It answers a brief to align `okf-icm` with the ICM framework (Instruction, Context, Memory) as a production workspace, keeping the knowledge-first commands. The accepted decisions are in [Decisions](#decisions-for-the-maintainer).
 
 ## Summary
 
@@ -8,7 +8,7 @@ About half the brief already exists. What is missing is small and sits at the ed
 
 | Brief asks for | Today | Gap |
 | --- | --- | --- |
-| Keep `prepare`, `browse`, `find`, `read`, task-free `context` | Done ([ENVIRONMENT.md](ENVIRONMENT.md)) | None. Frozen by this proposal. |
+| Keep `prepare`, `browse`, `find`, `read`, task-free `context` | Done ([ENVIRONMENT.md](../ENVIRONMENT.md)) | None. Frozen by this proposal. |
 | Standing instructions, domain knowledge, curated memory | `.context/policy.md`, `project.md`; `.context/knowledge/` curated by hand | No root `CLAUDE.md` / `CONTEXT.md`, no source/working/output homes |
 | `ENTRY.md` for people and assistants | `.context/navigation/ENTRY.md`, five generated lines | Does not say what is present or where things go |
 | Five-part prompt on export | None | New: `context --with-prompt` |
@@ -19,7 +19,7 @@ The design adds one module for the ICM layer (proposed `src/okf_icm/icm.py`), tw
 
 ## Principles that decide the open questions
 
-1. **One owner per file.** Generated maps and references are regenerated and refuse hand edits (see [Keep the environment current](ENVIRONMENT.md#keep-the-environment-current)). Everything else, including both entries, is created once and never rewritten. No file is half and half.
+1. **One owner per file.** Generated maps and references are regenerated and refuse hand edits (see [Keep the environment current](../ENVIRONMENT.md#keep-the-environment-current)). Everything else, including both entries, is created once and never rewritten. No file is half and half.
 2. **Flags add, defaults do not change.** Without a new flag, every export, entry and packet hash is byte-identical to today.
 3. **Classification is shown, not hidden.** Each exported file says which budget heading it is under and why.
 4. **Search is not proof.** The generated entry repeats that a match is a candidate and a miss proves nothing.
@@ -50,7 +50,7 @@ project/
 Notes from the current code:
 
 - `prepare` scans only paths you pass and only `.md`, `.txt`, `.rst`. The scaffold prints the suggested command, for example `okf-icm prepare --path sources --path examples --path CONTEXT.md --apply`. `CLAUDE.md` is deliberately not a source: it is a standing instruction, not indexed data.
-- Today `EXCLUDED` in [environment.py](../src/okf_icm/environment.py) skips `deliverables` and `artifacts`, not `outputs` or `working`. Because discovery is explicit this only matters for `--path .`. The proposal adds `working` and `outputs` to the exclusions for folder scans, which changes discovery for projects that already use those names; Decision 5.
+- Today `EXCLUDED` in [environment.py](../../src/okf_icm/environment.py) skips `deliverables` and `artifacts`, not `outputs` or `working`. Because discovery is explicit this only matters for `--path .`. The proposal adds `working` and `outputs` to the exclusions for folder scans, which changes discovery for projects that already use those names; Decision 5.
 - A developer repository need not move code. The scan sees only text, so `docs/` or `notes/` can stay where they are and be passed to `--path`. `sources/` is for inputs you do not already keep elsewhere.
 
 ### Where does this go?
@@ -75,7 +75,7 @@ Rule of thumb between the last two prose homes: if it needs a status or freshnes
 | Context | `CONTEXT.md`, `sources/`, `examples/` |
 | Memory | `.context/knowledge/` and its `log.md`, curated by hand |
 
-[PROTOCOL.md](PROTOCOL.md) already says these are this implementation's conventions, not official ICM.
+[PROTOCOL.md](../PROTOCOL.md) already says these are this implementation's conventions, not official ICM.
 
 ## CLI design
 
@@ -113,7 +113,7 @@ The six headings from the brief, and how a file reaches each:
 | The instruction | `--with-prompt` | The five-part request at the top |
 | Its own answer | No | It is what the assistant produces next. The size table shows the headroom instead. |
 
-Records stay JSON-string framed, as in [packets.py](../src/okf_icm/packets.py), so a source cannot close a fence or pose as instructions. Roles do not change: `CLAUDE.md` is `control`; `CONTEXT.md`, examples and history are `artifact`, which means data. The headings are rendering only. With `--budget` the packet and `packet_id` are exactly those of the plain export of the same files. With `--with-prompt` the packet also holds the standing file (role `control`) and `CONTEXT.md`, so its id differs from the plain export by exactly those records. The task text and `TODO` lines are not part of the hash; the output says so.
+Records stay JSON-string framed, as in [packets.py](../../src/okf_icm/packets.py), so a source cannot close a fence or pose as instructions. Roles do not change: `CLAUDE.md` is `control`; `CONTEXT.md`, examples and history are `artifact`, which means data. The headings are rendering only. With `--budget` the packet and `packet_id` are exactly those of the plain export of the same files. With `--with-prompt` the packet also holds the standing file (role `control`) and `CONTEXT.md`, so its id differs from the plain export by exactly those records. The task text and `TODO` lines are not part of the hash; the output says so.
 
 Illustration with synthetic values (`<...>` are real values at run time):
 
@@ -286,7 +286,7 @@ Nothing is required. Each step is optional and previewable.
 5. **Try an export.** `okf-icm context --select docs/api.md --with-prompt --task "..." > task.md`. Read the size table and the stderr list of unfilled parts. Inspect `CLAUDE.md` for secrets before sharing; it now travels with the export.
 6. **Undo.** Delete the files the apply created. No marker or config key was written, and existing entries were never touched.
 
-If a re-run of `prepare` reports a conflict on a generated map you edited, nothing is written; keep your text in `CONTEXT.md` first (see [Keep the environment current](ENVIRONMENT.md#keep-the-environment-current)).
+If a re-run of `prepare` reports a conflict on a generated map you edited, nothing is written; keep your text in `CONTEXT.md` first (see [Keep the environment current](../ENVIRONMENT.md#keep-the-environment-current)).
 
 ## What stays out
 
@@ -307,13 +307,13 @@ Small commits, each with its own tests. Not estimated by measurement.
 2. `--with-prompt`, `--task`, `--example`, `--history`: standing-file choice, exact-heading parts, stderr list of `TODO`s, refusal with `--run` and `--format json`.
 3. `prepare --layout icm` and the `browse` layout block: creates only missing items, never overwrites, refuses symlinks in managed paths like `prepare`.
 4. Entry variant: chosen only when an entry is created; unchanged without ICM files or `--layout icm`; existing entries untouched.
-5. Docs in the same commits that change behavior: [REF.md](REF.md) (an export rendering, no new schema or version marker), [ENVIRONMENT.md](ENVIRONMENT.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) entries for the new refusals, then run `relay --root . tidy --path docs --apply`. Templates are English only: they become packet content, which [i18n](../src/okf_icm/i18n.py) keeps English on purpose. The `Identidad`, `Restricciones` and `Formato` headings are accepted as aliases.
+5. Docs in the same commits that change behavior: [REF.md](../REF.md) (an export rendering, no new schema or version marker), [ENVIRONMENT.md](../ENVIRONMENT.md), [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) entries for the new refusals, then run `relay --root . tidy --path docs --apply`. Templates are English only: they become packet content, which [i18n](../../src/okf_icm/i18n.py) keeps English on purpose. The `Identidad`, `Restricciones` and `Formato` headings are accepted as aliases.
 
 Verification per AGENTS.md: `python -m unittest discover -s tests -v`, `python examples/smoke.py`, `python examples/relay_smoke.py`, plus a new synthetic `examples/` smoke for the layout and exports.
 
 ## Evidence and limits
 
-- No part of this is implemented or measured. "Fewer where-does-this-go decisions" and "a ready-to-paste request" are hypotheses. The way to test them is a [TRY.md](TRY.md)-style trial with someone unfamiliar with a project, recording setup time and what they still had to decide.
+- Implemented and unit-tested on synthetic files only; nothing is measured with people or live models. "Fewer where-does-this-go decisions" and "a ready-to-paste request" are hypotheses. The way to test them is a [TRY.md](../TRY.md)-style trial with someone unfamiliar with a project, recording setup time and what they still had to decide.
 - The budget table counts characters of the rendered export, not model tokens, and is not the assistant's context window.
 - Verbatim `Identity`, `Constraints` and `Format` copying shows the user's own words. It does not make them correct, and a standing file is not a grant of permission.
 - This is a local, loopback, trusted-user prototype. Nothing here claims organizational authorization.
