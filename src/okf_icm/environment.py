@@ -17,7 +17,7 @@ FOLDER_MAPS = ".context/navigation/folders/"
 REFERENCES = ".context/knowledge/references/imported/"
 EXTENSIONS = {".md", ".txt", ".rst"}
 EXCLUDED = {".git", ".context", ".relay-backups", ".venv", "venv", "node_modules",
-            "__pycache__", "build", "dist", "deliverables", "artifacts", ".ssh", ".aws", ".agents", ".codex"}
+            "__pycache__", "build", "dist", "deliverables", "artifacts", "working", "outputs", ".ssh", ".aws", ".agents", ".codex"}
 MAX_FILES = 2000
 GENERATOR = "process:okf-icm-environment"
 STOP = set("a an the and or of to in for with is are what how el la los las un una de del al y o en por para con que es son como cual cuales".split())
