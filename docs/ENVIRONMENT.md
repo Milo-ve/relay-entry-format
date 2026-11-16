@@ -63,6 +63,21 @@ Explicit selections are required. This [REF v2 context](REF.md#knowledge-environ
 
 The default budget is 32,000 rendered characters. Oversized context fails rather than silently removing required sources. Select headings or fewer files to reduce it. The packet hash identifies the exact export; hashes do not prove the claims in it. Without `--out`, export writes only stdout. With `--out`, it creates a new file outside `.context` and never overwrites an existing destination. No persisted packet receipt is created.
 
+### Context budget and a five-part request
+
+Two optional flags render the same records under context-budget headings. Without them the export is unchanged.
+
+```sh
+okf-icm context --select docs/api.md --budget
+okf-icm context --select docs/api.md --with-prompt --task "Add idempotency keys" > task.md
+```
+
+`--budget` groups files under Standing instructions, History, Material and Examples, labels each with the rule that placed it, and ends the header with a size table whose total is the whole rendered export. A file is Standing when it has the role `control`; Examples or History when named by `--example PATH` or `--history PATH` (repeatable; an explicit flag wins) or when a directory in its path is `examples` or `history`; otherwise Material. The packet and `packet_id` equal the plain export of the same files.
+
+`--with-prompt` adds a five-part request (Identity, Task, Context, Constraints, Format) above the budget and includes the root `CLAUDE.md` as a `control`, and `CONTEXT.md` as data, when they exist. If `CLAUDE.md` holds only an `@AGENTS.md` import, `AGENTS.md` is used; with no `CLAUDE.md`, `AGENTS.md` is the fallback. Identity, Constraints and Format are copied verbatim from the exact `## Identity`, `## Constraints` and `## Format` headings of that file (`Identidad`, `Restricciones`, `Formato` also work), so they also appear in its full record; the size table says how many characters repeat. Task is `--task TEXT`. A part with no text prints a `TODO` line and is listed on stderr. `policy.md` governs workflow, authority and review; on conflict it wins. A standing file that cannot be read or is denied by `deny_paths` is reported in the request, not dropped silently. The request text is not part of the hash, and nothing is written except an explicit `--out`.
+
+Both flags need Markdown output and explicit `--select`, `--example` or `--history`, and are refused with `--run` or `--format json`. `CLAUDE.md` travels with the export, so check it for secrets first. See the [proposal](ICM-WORKSPACE.md) for the design.
+
 ## Keep the environment current
 
 Repeat preparation with the same `--path` values after changing sources. The catalog is disposable navigation metadata, not operational acceptance state. Generation is deterministic and an unchanged selection produces no file changes.

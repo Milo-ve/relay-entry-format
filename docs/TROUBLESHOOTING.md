@@ -61,6 +61,18 @@ A `--blocker` was recorded at `start`. Resolve it outside Relay, then run `relay
 **`Cannot export context: this packet was taken before the rule.`**
 A source in the frozen packet now matches `deny_paths`, so the packet is not exported. Start a new task without that source.
 
+### Why does `okf-icm context --budget` or `--with-prompt` refuse?
+
+**`... apply to knowledge context, not to --run.`** The stage packet path has no budget headings. Drop the flags, or drop `--run`.
+
+**`... render Markdown; omit --format json.`** The headings and request are Markdown. Use the plain export for JSON.
+
+**`--task, --example and --history need --budget or --with-prompt.`** and **`--task needs --with-prompt.`** Add the flag that renders them.
+
+**`Context exceeds N characters; select fewer files or exact headings.`** Nothing was dropped. Read the size table of a smaller export, then select headings with `PATH#Heading` or raise `--max-chars`.
+
+**A `TODO` in the request, or `Request parts still to fill:` on stderr.** The standing file has no text under that exact heading, or `--task` was omitted. Fill it in the file or the pasted text.
+
 ### Why can't I submit?
 
 **`Inputs changed or prerequisites unresolved. Refresh or resolve before submitting.`**

@@ -1,4 +1,6 @@
 """Small CLI adapter for the knowledge-first path; no task-layer imports."""
+import sys
+
 from .environment import Environment
 from .storage import ContextError, atomic_write, json_text
 
@@ -21,6 +23,15 @@ def add_commands(sub):
 
 def dispatch_environment(args):
     commands = {"prepare", "browse", "find", "read"}
+    layout_flags = bool(args.command == "context" and (args.budget or args.with_prompt or args.task or args.example or args.history))
+    if layout_flags and args.run:
+        raise ContextError("--budget, --with-prompt, --task, --example and --history apply to knowledge context, not to --run.")
+    if layout_flags and args.format == "json":
+        raise ContextError("--budget, --with-prompt, --task, --example and --history render Markdown; omit --format json.")
+    if layout_flags and not (args.budget or args.with_prompt):
+        raise ContextError("--task, --example and --history need --budget or --with-prompt.")
+    if args.command == "context" and args.task and not args.with_prompt:
+        raise ContextError("--task needs --with-prompt.")
     context = args.command == "context" and not args.run
     if args.command not in commands and not context:
         return None
@@ -36,7 +47,14 @@ def dispatch_environment(args):
     else:
         if args.stage:
             raise ContextError("--stage requires --run; omit both for knowledge context.")
-        _, text = env.context(args.select, fmt=args.format, max_chars=args.max_chars)
+        if layout_flags:
+            from . import icm
+            _, text, unfilled = icm.export(env, args.select, examples=args.example, history=args.history, task=args.task,
+                                           with_prompt=args.with_prompt, max_chars=args.max_chars)
+            if unfilled:
+                print("Request parts still to fill: " + ", ".join(unfilled), file=sys.stderr)
+        else:
+            _, text = env.context(args.select, fmt=args.format, max_chars=args.max_chars)
         if args.out:
             if args.out.resolve().is_relative_to(env.home):
                 raise ContextError("Write exported context outside .context, which holds the environment.")
