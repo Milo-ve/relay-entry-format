@@ -40,7 +40,7 @@ def dispatch_environment(args):
     if args.command == "prepare":
         if not args.path and not args.layout:
             raise ContextError("Select at least one source folder with --path, or use --layout icm.")
-        result = env.prepare(args.path, apply=args.apply, name=args.name) if args.path else {}
+        result = env.prepare(args.path, apply=args.apply, name=args.name, layout=bool(args.layout)) if args.path else {}
         if args.layout:
             from . import icm
             result["layout"] = icm.scaffold(env, apply=args.apply)

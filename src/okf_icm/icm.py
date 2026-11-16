@@ -280,6 +280,11 @@ ENTRY_ICM = (
 SUGGESTED = "okf-icm prepare --path sources --path examples --path CONTEXT.md --apply"
 
 
+def has_instruction_files(root: Path) -> bool:
+    """True when the project root already holds CLAUDE.md or CONTEXT.md. Decides the text of a new entry."""
+    return any((root / name).exists() for name in (STANDING_FILE, CONTEXT_FILE))
+
+
 def has_layout(root: Path) -> bool:
     """True when the project already shows ICM files or folders. Reads names only."""
     return any((root / name).exists() for name in (STANDING_FILE, CONTEXT_FILE, *FOLDERS))

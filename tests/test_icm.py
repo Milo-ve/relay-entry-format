@@ -303,5 +303,57 @@ class LayoutCliTests(ExportBase):
         self.assertIn("Request parts with no text: Constraints, Format", self.run_cli("browse")[1])
 
 
+class EntryTests(IcmBase):
+    def setUp(self):
+        super().setUp()
+        self.write("docs/a.md")
+
+    def entries(self):
+        return ((self.root / ".context/ENTRY.md").read_text(), (self.root / ".context/navigation/ENTRY.md").read_text())
+
+    def test_classic_entry_without_icm_files_and_no_notes_key(self):
+        report = self.env.prepare(["docs"], apply=True, name="P")
+        for text in self.entries():
+            self.assertIn("Use `okf-icm browse`", text)
+            self.assertNotIn("CLAUDE.md", text)
+        self.assertNotIn("notes", report)
+
+    def test_instruction_files_choose_the_icm_entry_when_it_is_created(self):
+        self.write("CONTEXT.md", "# C\n")
+        self.env.prepare(["docs"], apply=True, name="P")
+        root_entry, nav_entry = self.entries()
+        self.assertIn("`CLAUDE.md` and `CONTEXT.md` in the project root", root_entry)
+        self.assertIn("[policy](policy.md)", root_entry)
+        self.assertIn("[policy](../policy.md)", nav_entry)
+        self.assertIn("[the knowledge map](index.md)", nav_entry)
+
+    def test_layout_flag_chooses_the_icm_entry_on_a_new_environment(self):
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertIn("with-prompt", self.entries()[0])
+
+    def test_existing_entries_are_kept_and_the_preview_says_so(self):
+        self.env.prepare(["docs"], apply=True, name="P")
+        before = self.entries()
+        report = self.env.prepare(["docs"], name="P", layout=True)
+        self.assertIn(".context/ENTRY.md", report["notes"][0])
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertEqual(before, self.entries())
+
+    def test_an_existing_icm_entry_needs_no_note(self):
+        self.env.prepare(["docs"], apply=True, name="P", layout=True)
+        self.assertNotIn("notes", self.env.prepare(["docs"], name="P", layout=True))
+
+    def test_repeated_preparation_stays_byte_identical_with_icm_files(self):
+        self.write("CLAUDE.md", "# R\n")
+        self.env.prepare(["docs"], apply=True, name="P")
+        before = self.snapshot()
+        result = self.env.prepare(["docs"], apply=True, name="P")
+        self.assertEqual((result["applied"], result["changes"]), (False, []))
+        self.assertEqual(before, self.snapshot())
+
+    def test_the_icm_entry_stays_small(self):
+        self.assertLess(len(icm.ENTRY_ICM.format(title="A reasonably long project title")), 1500)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -53,6 +53,8 @@ sources/  examples/  working/  outputs/              empty folders (a .gitkeep f
 
 If the project has an `AGENTS.md` and no `CLAUDE.md`, no `CLAUDE.md` is created, so a starter text cannot shadow your instructions. A file where a folder belongs is reported and left alone, symbolic links are refused, and a failed write restores the project. Nothing is moved or renamed. `browse` lists which of these exist and which request parts (Identity, Constraints, Format) the standing file lacks; it adds nothing to its output in projects with none of them. The printed next step is `okf-icm prepare --path sources --path examples --path CONTEXT.md --apply`; `CLAUDE.md` is deliberately not indexed as a source.
 
+The entries `prepare` creates use an ICM variant of their text when the root already has `CLAUDE.md` or `CONTEXT.md`, or when `--layout icm` was given; otherwise the text is unchanged. Only a newly created entry changes. An existing `.context/ENTRY.md` or `.context/navigation/ENTRY.md` is never rewritten, and a preview with `--layout icm` names the ones kept so you can merge the text by hand.
+
 ## Browse and read progressively
 
 ```sh
