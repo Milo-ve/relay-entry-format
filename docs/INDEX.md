@@ -26,6 +26,10 @@ Evidence records (read before making a claim about quality or compatibility):
 - [navigate-results.md](navigate-results.md): measured results and limits of `relay navigate`.
 - [jev-results.md](jev-results.md): one live shadow run of Jev on synthetic cases, and what it does not show.
 
+Proposals (not implemented):
+
+- [ICM-WORKSPACE.md](ICM-WORKSPACE.md): add an ICM folder layout, `CLAUDE.md`/`CONTEXT.md`, context-budget headings and a five-part prompt to `context`. Read before changing exports or scaffolding.
+
 History:
 
 - [archive/](archive/): superseded proposals and plans. Read only when asked.
